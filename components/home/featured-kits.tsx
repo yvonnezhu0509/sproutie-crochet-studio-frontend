@@ -27,21 +27,21 @@ export function FeaturedKits() {
         </Link>
       </div>
 
-      {/* Asymmetric editorial grid: 58% lead left, 42% compact right */}
-      <div className="grid gap-6 lg:grid-cols-[58%_42%] lg:gap-8">
-        {/* Featured lead — portrait image, full details below */}
+      {/* Asymmetric editorial grid: 56% lead left, 44% right — 32px gap */}
+      <div className="grid gap-y-8 lg:grid-cols-[56%_44%] lg:gap-x-8 lg:gap-y-0">
+        {/* Left — featured lead: 4:5 portrait, details below */}
         {kits[0] && (
           <Link
             href={`/originals/${kits[0].slug}`}
             className="group flex flex-col gap-4"
             aria-label={`View the ${kits[0].name} kit`}
           >
-            <div className="relative aspect-[3/4] overflow-hidden bg-muted">
+            <div className="relative aspect-[4/5] overflow-hidden bg-muted">
               <Image
                 src={kits[0].image}
                 alt={`${kits[0].name} crochet bag`}
                 fill
-                sizes="(min-width: 1024px) 55vw, 92vw"
+                sizes="(min-width: 1024px) 54vw, 92vw"
                 className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
               />
               <div className="absolute left-3 top-3">
@@ -69,40 +69,37 @@ export function FeaturedKits() {
           </Link>
         )}
 
-        {/* Right column — two compact horizontal rows: ~45% image, ~55% text */}
-        <div className="flex flex-col justify-between gap-4">
+        {/* Right column — two horizontal cards, 24px gap, each ~270px tall */}
+        <div className="flex flex-col gap-6">
           {kits.slice(1, 3).map((kit) => (
             <Link
               key={kit.slug}
               href={`/originals/${kit.slug}`}
-              className="group flex gap-4"
+              className="group flex h-[270px] gap-0 overflow-hidden bg-muted/30"
               aria-label={`View the ${kit.name} kit`}
             >
-              {/* Thumbnail — square, ~45% of column width */}
-              <div className="relative aspect-square w-[45%] shrink-0 overflow-hidden bg-muted">
+              {/* Image — 46% of card width */}
+              <div className="relative h-full w-[46%] shrink-0 overflow-hidden bg-muted">
                 <Image
                   src={kit.image}
                   alt={`${kit.name} crochet bag`}
                   fill
-                  sizes="(min-width: 1024px) 19vw, 42vw"
+                  sizes="(min-width: 1024px) 20vw, 45vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-[1.05]"
                 />
               </div>
-              {/* Text — right side */}
-              <div className="flex flex-col justify-center gap-1.5 py-1">
-                <Badge
-                  variant="secondary"
-                  className="w-fit text-xs"
-                >
+              {/* Text — remaining 54% */}
+              <div className="flex flex-col justify-center gap-2 px-5 py-4">
+                <Badge variant="secondary" className="w-fit text-xs">
                   {kit.availability}
                 </Badge>
                 <h3 className="font-heading text-base font-semibold leading-snug">
                   {kit.name}
                 </h3>
-                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">
+                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-3">
                   {kit.tagline}
                 </p>
-                <span className="font-heading text-sm font-semibold">
+                <span className="mt-auto font-heading text-sm font-semibold">
                   ${kit.price}
                 </span>
               </div>
