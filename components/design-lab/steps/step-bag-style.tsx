@@ -7,7 +7,7 @@ import type { DesignState } from '../design-lab'
 const bagStyles = [
   {
     id: 'tote-large',
-    name: 'Large Tote',
+    name: 'Tote Bag',
     description:
       'A roomy, structured tote sized for daily carry — laptop, groceries, or a yarn project.',
     available: true,
@@ -59,7 +59,7 @@ export function StepBagStyle({
           Choose a bag style
         </h2>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          The Design Studio currently supports the Large Tote as its first
+          The Design Studio currently supports the Tote Bag as its first
           prototype category. More bag styles are in development.
         </p>
       </header>
@@ -114,8 +114,8 @@ export function StepBagStyle({
       </div>
 
       <p className="text-xs text-muted-foreground/70">
-        All other bag styles are planned for future releases. Only the Large
-        Tote is available in this prototype.
+        All other bag styles are planned for future releases. Only the Tote Bag
+        is available in this prototype.
       </p>
     </div>
   )

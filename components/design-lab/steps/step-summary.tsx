@@ -79,7 +79,7 @@ export function StepSummary({
       <div className="grid gap-6 sm:grid-cols-2">
         {/* Left column */}
         <div className="flex flex-col gap-5">
-          <SummaryRow label="Bag style" value="Large Tote" />
+          <SummaryRow label="Bag style" value="Tote Bag" />
           {size && (
             <SummaryRow
               label="Size"
