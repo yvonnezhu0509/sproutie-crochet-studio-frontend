@@ -15,17 +15,17 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Sproutie Crochet Studio — Designed & AI-Assisted Crochet Bag Kits',
+    default: 'Sproutie Crochet Studio — Original Crochet Bag Kits & AI Design Studio',
     template: '%s · Sproutie Crochet Studio',
   },
   description:
-    'Explore original crochet bag kits or use our guided AI Tote Design Lab to create a tote inspired by your own colors, needs, and ideas. An early-stage studio prototype.',
+    'Explore original crochet bag kits or use our guided AI Bag Design Studio to create a bag inspired by your own colors, needs, and ideas. An early-stage studio prototype.',
   generator: 'v0.app',
 }
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#f3ead8',
+  themeColor: '#f7f6f4',
 }
 
 export default function RootLayout({

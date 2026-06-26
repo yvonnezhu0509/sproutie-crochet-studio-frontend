@@ -25,16 +25,16 @@ export function StepSize({
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
         <h2 className="font-heading text-2xl font-semibold tracking-tight">
-          Choose size &amp; use
+          Choose a size
         </h2>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          Pick one of our three constrained tote sizes. Measurements are shown
-          in inches first, with centimeters in parentheses.
+          Pick one of three tote sizes. Measurements are shown in inches first,
+          with centimeters in parentheses.
         </p>
       </header>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">Tote size</legend>
+        <legend className="mb-1 text-sm font-medium">Bag size</legend>
         <div className="grid gap-3 md:grid-cols-3">
           {toteSizes.map((size) => {
             const active = state.sizeId === size.id

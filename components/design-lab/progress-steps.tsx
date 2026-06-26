@@ -2,11 +2,12 @@ import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const LAB_STEPS = [
+  'Bag Style',
   'Inspiration',
   'Size & Use',
   'Yarn & Color',
-  'Handles & Details',
-  'Design Summary',
+  'Handles',
+  'Summary',
 ] as const
 
 export function ProgressSteps({ current }: { current: number }) {
@@ -24,20 +25,20 @@ export function ProgressSteps({ current }: { current: number }) {
                 i < LAB_STEPS.length - 1 && 'flex-1',
               )}
             >
-              <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+              <div className="flex flex-col items-center gap-1.5 sm:flex-row sm:gap-2.5">
                 <span
                   className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors',
+                    'flex size-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors',
                     done && 'border-primary bg-primary text-primary-foreground',
                     active && 'border-primary bg-background text-primary',
                     !done && !active && 'border-border bg-background text-muted-foreground',
                   )}
                 >
-                  {done ? <Check className="size-4" /> : i + 1}
+                  {done ? <Check className="size-3.5" /> : i + 1}
                 </span>
                 <span
                   className={cn(
-                    'hidden text-sm font-medium lg:inline',
+                    'hidden text-xs font-medium lg:inline',
                     active ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >
@@ -47,7 +48,7 @@ export function ProgressSteps({ current }: { current: number }) {
               {i < LAB_STEPS.length - 1 && (
                 <span
                   className={cn(
-                    'mx-2 h-px flex-1 sm:mx-4',
+                    'mx-1.5 h-px flex-1 sm:mx-3',
                     done ? 'bg-primary' : 'bg-border',
                   )}
                   aria-hidden="true"

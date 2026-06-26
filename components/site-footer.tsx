@@ -6,7 +6,7 @@ const footerNav = [
   {
     heading: 'Explore',
     links: [
-      { href: '/design', label: 'Design Your Tote' },
+      { href: '/design', label: 'Design Studio' },
       { href: '/originals', label: 'Studio Originals' },
       { href: '/how-it-works', label: 'How It Works' },
     ],
@@ -34,7 +34,7 @@ export function SiteFooter() {
             </Link>
             <p className="max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground">
               A modern crochet design studio making original bag kits — and
-              prototyping a guided way to design your own tote.
+              prototyping a guided way to design your own bag.
             </p>
           </div>
 
@@ -64,7 +64,7 @@ export function SiteFooter() {
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Join the list for new kits, prototype releases, and early access
-              to the AI Tote Design Lab.
+              to the AI Bag Design Studio.
             </p>
             <NewsletterForm compact />
           </div>

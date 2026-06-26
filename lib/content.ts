@@ -1,7 +1,7 @@
 // Shared editorial copy and reference content.
 
 export const navLinks = [
-  { href: '/design', label: 'Design Your Tote' },
+  { href: '/design', label: 'Design Studio' },
   { href: '/originals', label: 'Studio Originals' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/about', label: 'About' },
@@ -12,7 +12,7 @@ export const processSteps = [
   {
     title: 'Share Your Inspiration',
     description:
-      'Describe a mood, a place, or a color story — or add a reference image. We read it for mood, color, and function, not to copy an existing product.',
+      'Describe a mood, a place, or a color story — or add a reference image. We read it for mood, color, and function — not to copy an existing product.',
   },
   {
     title: 'Choose Size and Function',

@@ -6,7 +6,13 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export function NewsletterForm({ compact = false }: { compact?: boolean }) {
+export function NewsletterForm({
+  compact = false,
+  dark = false,
+}: {
+  compact?: boolean
+  dark?: boolean
+}) {
   const [email, setEmail] = useState('')
 
   function handleSubmit(e: React.FormEvent) {
@@ -18,27 +24,35 @@ export function NewsletterForm({ compact = false }: { compact?: boolean }) {
     setEmail('')
   }
 
+  const inputId = compact ? 'footer-email' : dark ? 'signup-email' : 'newsletter-email'
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn(
-        'flex w-full gap-2',
-        compact ? 'flex-col sm:flex-row' : 'flex-col sm:flex-row',
-      )}
-    >
-      <label htmlFor={compact ? 'footer-email' : 'newsletter-email'} className="sr-only">
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-2 sm:flex-row">
+      <label htmlFor={inputId} className="sr-only">
         Email address
       </label>
       <Input
-        id={compact ? 'footer-email' : 'newsletter-email'}
+        id={inputId}
         type="email"
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
-        className={cn('h-11 flex-1 bg-background text-base sm:text-sm')}
+        className={cn(
+          'h-11 flex-1 text-base sm:text-sm',
+          dark
+            ? 'border-background/20 bg-background/10 text-background placeholder:text-background/40 focus-visible:ring-background/50'
+            : 'bg-background',
+        )}
       />
-      <Button type="submit" className="h-11 px-5">
+      <Button
+        type="submit"
+        variant={dark ? 'outline' : 'default'}
+        className={cn(
+          'h-11 px-5',
+          dark && 'border-background/30 bg-transparent text-background hover:bg-background/10',
+        )}
+      >
         Join the list
       </Button>
     </form>
