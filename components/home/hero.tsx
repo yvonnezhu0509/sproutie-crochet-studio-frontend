@@ -6,9 +6,6 @@ import { buttonVariants } from '@/components/ui/button'
 export function Hero() {
   return (
     <section className="relative min-h-[92svh] overflow-hidden">
-      {/* background subtle grid texture */}
-      <div className="pointer-events-none absolute inset-0 stitch-grid opacity-30" aria-hidden="true" />
-
       <div className="relative mx-auto grid max-w-7xl items-end gap-0 px-6 pb-16 pt-20 sm:px-8 lg:min-h-[92svh] lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-16 lg:px-12 lg:pb-24 lg:pt-28">
         {/* Left — editorial text block */}
         <div className="flex flex-col gap-8 lg:pb-12">

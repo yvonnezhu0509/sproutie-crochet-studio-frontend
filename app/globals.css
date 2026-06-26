@@ -12,6 +12,10 @@
   --color-sprout-foreground: var(--sprout-foreground);
   --color-warm: var(--warm);
   --color-warm-foreground: var(--warm-foreground);
+  --color-aqua: var(--aqua);
+  --color-aqua-foreground: var(--aqua-foreground);
+  --color-citrine: var(--citrine);
+  --color-citrine-foreground: var(--citrine-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -54,52 +58,58 @@
 
 :root {
   color-scheme: light;
-  /* pale gray-white — cool, almost no hue */
-  --background: oklch(0.975 0.002 250);
-  /* cool charcoal — gray with a slight blue-gray lean */
+  /* clean off-white — barely warm, no cream or beige cast */
+  --background: oklch(0.982 0.005 75);
+  /* charcoal — kept as-is per spec */
   --foreground: oklch(0.22 0.012 255);
-  /* pure near-white for card surfaces */
-  --card: oklch(0.99 0.001 240);
+  /* slightly warmer near-white for cards */
+  --card: oklch(0.995 0.003 70);
   --card-foreground: oklch(0.22 0.012 255);
-  --popover: oklch(0.99 0.001 240);
+  --popover: oklch(0.995 0.003 70);
   --popover-foreground: oklch(0.22 0.012 255);
-  /* watery blue — primary interface accent, unchanged */
-  --primary: oklch(0.52 0.11 228);
+  /* watery blue — lifted chroma for more life */
+  --primary: oklch(0.52 0.135 228);
   --primary-foreground: oklch(0.99 0 0);
-  /* pale teal for secondary surfaces */
-  --secondary: oklch(0.935 0.02 220);
-  --secondary-foreground: oklch(0.3 0.065 232);
-  /* truly neutral muted surface — no warm cast */
-  --muted: oklch(0.948 0.003 250);
-  --muted-foreground: oklch(0.48 0.008 250);
-  /* light teal hover/accent surface */
-  --accent: oklch(0.925 0.025 220);
-  --accent-foreground: oklch(0.3 0.065 232);
+  /* clear teal secondary surface */
+  --secondary: oklch(0.94 0.03 215);
+  --secondary-foreground: oklch(0.28 0.075 230);
+  /* warm-neutral muted — less gray, slight warmth */
+  --muted: oklch(0.956 0.007 70);
+  --muted-foreground: oklch(0.5 0.014 220);
+  /* lively teal accent surface */
+  --accent: oklch(0.93 0.035 215);
+  --accent-foreground: oklch(0.28 0.075 230);
   --destructive: oklch(0.55 0.17 27);
-  /* cool neutral border — no warmth */
-  --border: oklch(0.9 0.004 250);
-  --input: oklch(0.9 0.004 250);
-  --ring: oklch(0.52 0.11 228);
-  /* yellow-green sprout — very muted, small use only */
-  --sprout: oklch(0.68 0.1 138);
-  --sprout-foreground: oklch(0.28 0.07 138);
-  /* soft rose — replaces the warm coral, cooler counterpoint */
-  --warm: oklch(0.8 0.065 355);
-  --warm-foreground: oklch(0.35 0.075 355);
-  --chart-1: oklch(0.52 0.11 228);
-  --chart-2: oklch(0.68 0.1 138);
-  --chart-3: oklch(0.8 0.065 355);
-  --chart-4: oklch(0.65 0.07 205);
-  --chart-5: oklch(0.48 0.008 250);
+  /* soft warm-neutral border — no gray cast */
+  --border: oklch(0.908 0.008 70);
+  --input: oklch(0.908 0.008 70);
+  --ring: oklch(0.52 0.135 228);
+  /* fresh yellow-green sprout — slightly brighter */
+  --sprout: oklch(0.72 0.14 138);
+  --sprout-foreground: oklch(0.27 0.08 138);
+  /* restrained coral — small accent counterpoint */
+  --warm: oklch(0.82 0.09 25);
+  --warm-foreground: oklch(0.34 0.085 25);
+  /* translucent aqua — fresh small accent */
+  --aqua: oklch(0.86 0.08 195);
+  --aqua-foreground: oklch(0.3 0.07 200);
+  /* pale citrine — fresh small accent */
+  --citrine: oklch(0.92 0.075 90);
+  --citrine-foreground: oklch(0.38 0.09 90);
+  --chart-1: oklch(0.52 0.135 228);
+  --chart-2: oklch(0.72 0.14 138);
+  --chart-3: oklch(0.82 0.09 25);
+  --chart-4: oklch(0.86 0.08 195);
+  --chart-5: oklch(0.92 0.075 90);
   --radius: 0.875rem;
-  --sidebar: oklch(0.99 0.001 240);
+  --sidebar: oklch(0.995 0.003 70);
   --sidebar-foreground: oklch(0.22 0.012 255);
-  --sidebar-primary: oklch(0.52 0.11 228);
+  --sidebar-primary: oklch(0.52 0.135 228);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.925 0.025 220);
-  --sidebar-accent-foreground: oklch(0.3 0.065 232);
-  --sidebar-border: oklch(0.9 0.004 250);
-  --sidebar-ring: oklch(0.52 0.11 228);
+  --sidebar-accent: oklch(0.93 0.035 215);
+  --sidebar-accent-foreground: oklch(0.28 0.075 230);
+  --sidebar-border: oklch(0.908 0.008 70);
+  --sidebar-ring: oklch(0.52 0.135 228);
 }
 
 .dark {
