@@ -3,6 +3,7 @@
 export const navLinks = [
   { href: '/design', label: 'Design Studio' },
   { href: '/originals', label: 'Studio Originals' },
+  { href: '/community', label: 'Community' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/about', label: 'About' },
   { href: '/faq', label: 'FAQ' },
