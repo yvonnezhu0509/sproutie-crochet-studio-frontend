@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ export function NewsletterForm({
   dark?: boolean
 }) {
   const [email, setEmail] = useState('')
+  const inputId = useId()
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -23,8 +24,6 @@ export function NewsletterForm({
     })
     setEmail('')
   }
-
-  const inputId = compact ? 'footer-email' : dark ? 'signup-email' : 'newsletter-email'
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-2 sm:flex-row">

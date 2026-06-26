@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { communityGuidelines } from '@/lib/community'
 
 type FormState = 'idle' | 'submitting' | 'success'
 
 export function ShareForm() {
+  const uid = useId()
   const [state, setState] = useState<FormState>('idle')
   const [values, setValues] = useState({
     title: '',
@@ -67,11 +67,11 @@ export function ShareForm() {
       <div className="grid gap-5 sm:grid-cols-2">
         {/* Project title */}
         <div className="sm:col-span-2">
-          <label htmlFor="title" className={labelClass}>
+          <label htmlFor={`${uid}-title`} className={labelClass}>
             Project title <span className="text-muted-foreground">(required)</span>
           </label>
           <input
-            id="title"
+            id={`${uid}-title`}
             type="text"
             required
             value={values.title}
@@ -83,11 +83,11 @@ export function ShareForm() {
 
         {/* Status */}
         <div>
-          <label htmlFor="status" className={labelClass}>
+          <label htmlFor={`${uid}-status`} className={labelClass}>
             Project status <span className="text-muted-foreground">(required)</span>
           </label>
           <select
-            id="status"
+            id={`${uid}-status`}
             required
             value={values.status}
             onChange={set('status')}
@@ -102,11 +102,11 @@ export function ShareForm() {
 
         {/* Bag type */}
         <div>
-          <label htmlFor="bagType" className={labelClass}>
+          <label htmlFor={`${uid}-bagType`} className={labelClass}>
             Bag type
           </label>
           <select
-            id="bagType"
+            id={`${uid}-bagType`}
             value={values.bagType}
             onChange={set('bagType')}
             className={inputClass}
@@ -124,11 +124,11 @@ export function ShareForm() {
 
         {/* Story */}
         <div className="sm:col-span-2">
-          <label htmlFor="story" className={labelClass}>
+          <label htmlFor={`${uid}-story`} className={labelClass}>
             Story or inspiration <span className="text-muted-foreground">(required)</span>
           </label>
           <textarea
-            id="story"
+            id={`${uid}-story`}
             required
             rows={4}
             value={values.story}
@@ -148,11 +148,11 @@ export function ShareForm() {
 
         {/* Materials */}
         <div className="sm:col-span-2">
-          <label htmlFor="materials" className={labelClass}>
+          <label htmlFor={`${uid}-materials`} className={labelClass}>
             Yarn and materials
           </label>
           <textarea
-            id="materials"
+            id={`${uid}-materials`}
             rows={3}
             value={values.materials}
             onChange={set('materials')}
@@ -163,11 +163,11 @@ export function ShareForm() {
 
         {/* Dimensions */}
         <div>
-          <label htmlFor="dimensions" className={labelClass}>
+          <label htmlFor={`${uid}-dimensions`} className={labelClass}>
             Dimensions
           </label>
           <input
-            id="dimensions"
+            id={`${uid}-dimensions`}
             type="text"
             value={values.dimensions}
             onChange={set('dimensions')}
@@ -178,11 +178,11 @@ export function ShareForm() {
 
         {/* Difficulty */}
         <div>
-          <label htmlFor="difficulty" className={labelClass}>
+          <label htmlFor={`${uid}-difficulty`} className={labelClass}>
             Skill level
           </label>
           <select
-            id="difficulty"
+            id={`${uid}-difficulty`}
             value={values.difficulty}
             onChange={set('difficulty')}
             className={inputClass}
@@ -196,11 +196,11 @@ export function ShareForm() {
 
         {/* Construction notes */}
         <div className="sm:col-span-2">
-          <label htmlFor="construction" className={labelClass}>
+          <label htmlFor={`${uid}-construction`} className={labelClass}>
             Construction notes
           </label>
           <textarea
-            id="construction"
+            id={`${uid}-construction`}
             rows={3}
             value={values.construction}
             onChange={set('construction')}
@@ -211,11 +211,11 @@ export function ShareForm() {
 
         {/* Feedback requested */}
         <div className="sm:col-span-2">
-          <label htmlFor="feedbackRequested" className={labelClass}>
+          <label htmlFor={`${uid}-feedbackRequested`} className={labelClass}>
             Feedback you are looking for
           </label>
           <input
-            id="feedbackRequested"
+            id={`${uid}-feedbackRequested`}
             type="text"
             value={values.feedbackRequested}
             onChange={set('feedbackRequested')}
@@ -226,12 +226,12 @@ export function ShareForm() {
 
         {/* Design Studio link */}
         <div className="sm:col-span-2">
-          <label htmlFor="designLink" className={labelClass}>
+          <label htmlFor={`${uid}-designLink`} className={labelClass}>
             Design Studio draft link{' '}
             <span className="text-muted-foreground">(optional)</span>
           </label>
           <input
-            id="designLink"
+            id={`${uid}-designLink`}
             type="url"
             value={values.designLink}
             onChange={set('designLink')}

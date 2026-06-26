@@ -70,33 +70,34 @@ export function SiteHeader() {
         </button>
       </div>
 
-      {/* Mobile nav */}
-      {open && (
-        <div
-          id="mobile-nav"
-          className="border-t border-border/50 bg-background lg:hidden"
+      {/* Mobile nav — always in DOM, toggled with hidden to avoid SSR/client mismatch */}
+      <div
+        id="mobile-nav"
+        className={cn(
+          'border-t border-border/50 bg-background lg:hidden',
+          !open && 'hidden',
+        )}
+      >
+        <nav
+          className="mx-auto flex max-w-7xl flex-col px-6 py-4 sm:px-8"
+          aria-label="Mobile"
         >
-          <nav
-            className="mx-auto flex max-w-7xl flex-col px-6 py-4 sm:px-8"
-            aria-label="Mobile"
-          >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
-                  (pathname === link.href || pathname.startsWith(link.href + '/')) &&
-                    'text-foreground',
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      )}
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setOpen(false)}
+              className={cn(
+                'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                (pathname === link.href || pathname.startsWith(link.href + '/')) &&
+                  'text-foreground',
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
     </header>
   )
 }
