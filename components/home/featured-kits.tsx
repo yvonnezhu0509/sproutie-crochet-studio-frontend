@@ -27,39 +27,39 @@ export function FeaturedKits() {
         </Link>
       </div>
 
-      {/* Asymmetric editorial grid: large first item, two smaller below */}
-      <div className="grid gap-12 lg:grid-cols-2 lg:gap-6">
-        {/* Featured lead — full column height */}
+      {/* Asymmetric editorial grid: wider lead left, wider right column with two stacked items */}
+      <div className="grid gap-8 lg:grid-cols-[5fr_7fr] lg:gap-5 xl:gap-7">
+        {/* Featured lead — taller portrait image, details below */}
         {kits[0] && (
           <Link
             href={`/originals/${kits[0].slug}`}
-            className="group relative flex flex-col gap-5"
+            className="group flex flex-col gap-4"
             aria-label={`View the ${kits[0].name} kit`}
           >
-            <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+            <div className="relative aspect-[3/4] overflow-hidden bg-muted">
               <Image
                 src={kits[0].image}
                 alt={`${kits[0].name} crochet bag`}
                 fill
-                sizes="(min-width: 1024px) 48vw, 92vw"
+                sizes="(min-width: 1280px) 38vw, (min-width: 1024px) 42vw, 92vw"
                 className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
               />
-              <div className="absolute left-4 top-4">
+              <div className="absolute left-3 top-3">
                 <Badge className="border-transparent bg-background/85 text-xs text-foreground backdrop-blur">
                   {kits[0].availability}
                 </Badge>
               </div>
             </div>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-heading text-2xl font-semibold leading-snug">
+                <h3 className="font-heading text-xl font-semibold leading-snug">
                   {kits[0].name}
                 </h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                   {kits[0].tagline}
                 </p>
               </div>
-              <span className="shrink-0 font-heading text-xl font-semibold">
+              <span className="shrink-0 font-heading text-lg font-semibold">
                 ${kits[0].price}
               </span>
             </div>
@@ -69,37 +69,41 @@ export function FeaturedKits() {
           </Link>
         )}
 
-        {/* Right column — two stacked smaller items */}
-        <div className="flex flex-col gap-10 lg:justify-between">
+        {/* Right column — two stacked items, each image-led with details below */}
+        <div className="flex flex-col gap-5">
           {kits.slice(1, 3).map((kit) => (
             <Link
               key={kit.slug}
               href={`/originals/${kit.slug}`}
-              className="group flex gap-5 sm:gap-6"
+              className="group flex flex-col gap-3"
               aria-label={`View the ${kit.name} kit`}
             >
-              <div className="relative aspect-square w-36 shrink-0 overflow-hidden bg-muted sm:w-44">
+              <div className="relative aspect-[4/3] overflow-hidden bg-muted">
                 <Image
                   src={kit.image}
                   alt={`${kit.name} crochet bag`}
                   fill
-                  sizes="176px"
+                  sizes="(min-width: 1280px) 52vw, (min-width: 1024px) 56vw, 92vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                 />
-              </div>
-              <div className="flex flex-col justify-center gap-2">
-                <h3 className="font-heading text-lg font-semibold leading-snug">
-                  {kit.name}
-                </h3>
-                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">
-                  {kit.tagline}
-                </p>
-                <div className="flex items-center gap-3">
-                  <span className="font-heading text-base font-semibold">${kit.price}</span>
-                  <Badge variant="secondary" className="text-xs">
+                <div className="absolute left-3 top-3">
+                  <Badge className="border-transparent bg-background/85 text-xs text-foreground backdrop-blur">
                     {kit.availability}
                   </Badge>
                 </div>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-heading text-base font-semibold leading-snug">
+                    {kit.name}
+                  </h3>
+                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground line-clamp-1">
+                    {kit.tagline}
+                  </p>
+                </div>
+                <span className="shrink-0 font-heading text-base font-semibold">
+                  ${kit.price}
+                </span>
               </div>
             </Link>
           ))}
