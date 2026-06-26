@@ -53,7 +53,7 @@ export function Hero() {
           <div className="relative aspect-[3/4] overflow-hidden lg:aspect-auto lg:h-[80svh] lg:max-h-[760px]">
             <Image
               src="/hero-tote-flatlay.png"
-              alt="A handmade crochet tote bag surrounded by yarn and wooden handles on a cream linen surface"
+              alt="An experimental crochet bag with translucent panels, watery blue and dusty pink yarn, on a cool white studio background"
               fill
               priority
               sizes="(min-width: 1024px) 50vw, 100vw"
@@ -63,7 +63,7 @@ export function Hero() {
           {/* floating caption */}
           <div className="absolute bottom-6 right-6 rounded-xl bg-background/90 px-4 py-2.5 backdrop-blur">
             <p className="text-xs font-medium text-muted-foreground">
-              Aquarium Window Bag — studio prototype
+              Untitled No. 4 — studio concept, 2024
             </p>
           </div>
         </div>
