@@ -7,6 +7,7 @@ import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { navLinks } from '@/lib/content'
 import { Logo } from '@/components/logo'
+import { AnnouncementBar } from '@/components/announcement-bar'
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
@@ -78,6 +79,9 @@ export function SiteHeader() {
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
       </div>
+
+      {/* Announcement bar — below nav chrome, above mobile panel */}
+      <AnnouncementBar />
 
       {/* Mobile nav — always in DOM, toggled with hidden to avoid SSR/client mismatch */}
       <div
