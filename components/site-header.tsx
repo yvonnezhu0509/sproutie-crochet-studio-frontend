@@ -47,13 +47,22 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Desktop right — single quiet CTA */}
-        <div className="hidden lg:flex">
+        {/* Desktop right — quiet links */}
+        <div className="hidden items-center gap-5 lg:flex">
           <Link
             href="/design"
             className="text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
             Design Studio
+          </Link>
+          <Link
+            href="/sign-in"
+            className={cn(
+              'text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+              (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
+            )}
+          >
+            Sign In
           </Link>
         </div>
 
@@ -96,6 +105,17 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          <div className="my-1 h-px bg-border" />
+          <Link
+            href="/sign-in"
+            onClick={() => setOpen(false)}
+            className={cn(
+              'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+              (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
+            )}
+          >
+            Sign In
+          </Link>
         </nav>
       </div>
     </header>
