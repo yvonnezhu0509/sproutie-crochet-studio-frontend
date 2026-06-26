@@ -29,14 +29,15 @@ export function FeaturedKits() {
 
       {/* Asymmetric editorial grid: 56% lead left, 44% right — 32px gap */}
       <div className="grid gap-y-8 lg:grid-cols-[56%_44%] lg:gap-x-8 lg:gap-y-0">
-        {/* Left — featured lead: 4:5 portrait, details below */}
+        {/* Left — featured lead: fixed 564px on desktop (= 2×270px cards + 24px gap) */}
         {kits[0] && (
           <Link
             href={`/originals/${kits[0].slug}`}
-            className="group flex flex-col gap-4"
+            className="group flex flex-col gap-4 lg:h-[564px]"
             aria-label={`View the ${kits[0].name} kit`}
           >
-            <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+            {/* Image grows to fill remaining height after the text block */}
+            <div className="relative aspect-[4/5] overflow-hidden bg-muted lg:aspect-auto lg:min-h-0 lg:flex-1">
               <Image
                 src={kits[0].image}
                 alt={`${kits[0].name} crochet bag`}
@@ -50,22 +51,25 @@ export function FeaturedKits() {
                 </Badge>
               </div>
             </div>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-heading text-xl font-semibold leading-snug">
-                  {kits[0].name}
-                </h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  {kits[0].tagline}
-                </p>
+            {/* Text block — natural height, image above absorbs the rest */}
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-heading text-xl font-semibold leading-snug">
+                    {kits[0].name}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {kits[0].tagline}
+                  </p>
+                </div>
+                <span className="shrink-0 font-heading text-lg font-semibold">
+                  ${kits[0].price}
+                </span>
               </div>
-              <span className="shrink-0 font-heading text-lg font-semibold">
-                ${kits[0].price}
-              </span>
+              <p className="text-xs font-medium text-muted-foreground/70">
+                {kits[0].skillLevel} &middot; {kits[0].makingTime}
+              </p>
             </div>
-            <p className="text-xs font-medium text-muted-foreground/70">
-              {kits[0].skillLevel} &middot; {kits[0].makingTime}
-            </p>
           </Link>
         )}
 
