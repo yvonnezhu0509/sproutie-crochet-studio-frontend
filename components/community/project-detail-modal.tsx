@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { X, Heart, Bookmark, ArrowUpRight, Send } from 'lucide-react'
@@ -50,8 +50,10 @@ export function ProjectDetailModal({ project, onClose }: Props) {
   const [saved, setSaved] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [comments, setComments] = useState<CommunityComment[]>(project.comments)
+  const [commentCount, setCommentCount] = useState(0)
   const overlayRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const commentIdPrefix = useId()
 
   // Close on Escape
   useEffect(() => {
@@ -76,13 +78,14 @@ export function ProjectDetailModal({ project, onClose }: Props) {
   const handleSubmitComment = () => {
     if (!commentText.trim()) return
     const newComment: CommunityComment = {
-      id: `c-${Date.now()}`,
+      id: `${commentIdPrefix}-${commentCount}`,
       author: 'you',
       avatar: 'YO',
       date: 'Just now',
       body: commentText.trim(),
     }
     setComments((prev) => [...prev, newComment])
+    setCommentCount((n) => n + 1)
     setCommentText('')
   }
 
@@ -111,8 +114,10 @@ export function ProjectDetailModal({ project, onClose }: Props) {
             <button
               type="button"
               onClick={() => {
-                setLiked((v) => !v)
-                setLikeCount((c) => (liked ? c - 1 : c + 1))
+                setLiked((prev) => {
+                  setLikeCount((c) => (prev ? c - 1 : c + 1))
+                  return !prev
+                })
               }}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors',

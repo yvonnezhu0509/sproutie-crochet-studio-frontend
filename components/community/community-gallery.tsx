@@ -97,8 +97,10 @@ function ProjectCard({
           <button
             type="button"
             onClick={() => {
-              setLiked((v) => !v)
-              setLikeCount((c) => (liked ? c - 1 : c + 1))
+              setLiked((prev) => {
+                setLikeCount((c) => (prev ? c - 1 : c + 1))
+                return !prev
+              })
             }}
             className={cn(
               'inline-flex items-center gap-1.5 text-xs transition-colors',

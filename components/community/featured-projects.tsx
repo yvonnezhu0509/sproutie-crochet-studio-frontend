@@ -27,8 +27,10 @@ function LikeButton({ initialCount }: { initialCount: number }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation()
-        setLiked((v) => !v)
-        setCount((c) => (liked ? c - 1 : c + 1))
+        setLiked((prev) => {
+          setCount((c) => (prev ? c - 1 : c + 1))
+          return !prev
+        })
       }}
       className={cn(
         'inline-flex items-center gap-1.5 text-xs transition-colors',
