@@ -17,7 +17,40 @@ interface Message {
   content: string
 }
 
+// ---------------------------------------------------------------------------
+// Mock responses — swap for a real API route when ready
+// ---------------------------------------------------------------------------
+const MOCK_RESPONSES: Record<string, string> = {
+  default:
+    "Hi! I'm Sproutie, your crochet studio guide. I can help with kit details, the Design Studio, materials, skill levels, and shipping. What would you like to know?",
+  kit: "Our kits include everything you need — curated yarn, hardware, handles, a written pattern, and a photo guide. Each kit is designed to be made at home with standard hooks you likely already own.",
+  design:
+    "The Design Studio is our AI-assisted bag design tool. You pick a style, size, colors, and handles through a guided flow. At the end you get a design summary and a materials list. It's still a prototype — we're refining it.",
+  shipping:
+    "We ship within North America. Standard shipping takes 5–10 business days. We're working on international options — join the newsletter to hear when they launch.",
+  skill:
+    "Our kits are designed for intermediate crocheters — you should be comfortable with single and half-double crochet, basic tension control, and joining yarn. Beginners with a few finished projects will do fine.",
+  price:
+    "Kit prices range from $48 to $84 USD depending on the bag style and included materials. Prices include all yarn, hardware, and pattern access.",
+  yarn: "We use high-quality 100% cotton yarn in each kit — it's durable, washable, and holds structure well for bags. Each kit specifies the exact weight and meterage needed.",
+}
 
+function getMockResponse(text: string): string {
+  const lower = text.toLowerCase()
+  if (lower.includes('kit') || lower.includes('include') || lower.includes('what') && lower.includes('get'))
+    return MOCK_RESPONSES.kit
+  if (lower.includes('design') || lower.includes('studio') || lower.includes('ai') || lower.includes('tool'))
+    return MOCK_RESPONSES.design
+  if (lower.includes('ship') || lower.includes('deliver') || lower.includes('international'))
+    return MOCK_RESPONSES.shipping
+  if (lower.includes('skill') || lower.includes('level') || lower.includes('beginner') || lower.includes('hard'))
+    return MOCK_RESPONSES.skill
+  if (lower.includes('price') || lower.includes('cost') || lower.includes('how much') || lower.includes('$'))
+    return MOCK_RESPONSES.price
+  if (lower.includes('yarn') || lower.includes('material') || lower.includes('fiber') || lower.includes('cotton'))
+    return MOCK_RESPONSES.yarn
+  return "That's a great question. I don't have a specific answer for that right now, but you can reach us via the newsletter signup — we read every reply and will get back to you."
+}
 
 // ---------------------------------------------------------------------------
 // Suggestion chips shown in the empty state
@@ -129,93 +162,26 @@ export function AskSproutie() {
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  // Keep a stable ref to messages so the streaming closure always sees current history
-  const messagesRef = useRef<Message[]>(messages)
-  useEffect(() => { messagesRef.current = messages }, [messages])
-
-  async function send(text: string) {
+  function send(text: string) {
     const trimmed = text.trim()
     if (!trimmed || loading) return
-
-    const userMsgId = `${uid}-u-${msgCount}`
-    const assistantMsgId = `${uid}-a-${msgCount}`
-    const userMsg: Message = { id: userMsgId, role: 'user', content: trimmed }
-
+    const userMsg: Message = { id: `${uid}-${msgCount}`, role: 'user', content: trimmed }
     setMessages((prev) => [...prev, userMsg])
     setMsgCount((n) => n + 1)
     setInput('')
     setLoading(true)
 
-    // Build history to send (exclude the streaming placeholder)
-    const history: { role: 'user' | 'assistant'; content: string }[] =
-      [...messagesRef.current, userMsg].map(({ role, content }) => ({ role, content }))
-
-    // Add an empty assistant placeholder so the typing indicator is replaced by streamed text
-    setMessages((prev) => [...prev, { id: assistantMsgId, role: 'assistant', content: '' }])
-
-    try {
-      const res = await fetch('/api/support-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
-      })
-
-      if (!res.ok || !res.body) {
-        const errText = await res.text().catch(() => 'Unknown error')
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId
-              ? { ...m, content: `Sorry, something went wrong. (${res.status}) ${errText}` }
-              : m,
-          ),
-        )
-        setLoading(false)
-        return
+    // Simulate a short delay for realism
+    setTimeout(() => {
+      const reply: Message = {
+        id: `${uid}-${msgCount + 1}`,
+        role: 'assistant',
+        content: getMockResponse(trimmed),
       }
-
-      // Stream SSE tokens into the assistant placeholder
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') break
-
-          try {
-            const parsed = JSON.parse(data)
-            const token: string = parsed?.choices?.[0]?.delta?.content ?? ''
-            if (!token) continue
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId ? { ...m, content: m.content + token } : m,
-              ),
-            )
-          } catch {
-            // Ignore malformed chunks
-          }
-        }
-      }
-    } catch (err) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMsgId
-            ? { ...m, content: 'Sorry, I could not connect right now. Please try again shortly.' }
-            : m,
-        ),
-      )
-    } finally {
+      setMessages((prev) => [...prev, reply])
+      setMsgCount((n) => n + 2)
       setLoading(false)
-    }
+    }, 700 + Math.random() * 400)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -336,8 +302,8 @@ export function AskSproutie() {
             </div>
           ))}
 
-          {/* Loading dots — visible only until first token streams in */}
-          {loading && messages.every((m) => m.role !== 'assistant' || m.content !== '') === false && (
+          {/* Loading dots */}
+          {loading && (
             <div className="flex gap-2.5">
               <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Sparkles className="size-3" />
@@ -398,7 +364,7 @@ export function AskSproutie() {
             </button>
           </div>
           <p className="mt-2 text-center text-[10px] text-muted-foreground/60">
-            AI responses may not always be accurate
+            Prototype responses only — not a live support channel
           </p>
         </div>
       </div>
