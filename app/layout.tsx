@@ -4,6 +4,7 @@ import { Geist, Fraunces } from 'next/font/google'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { Toaster } from '@/components/ui/sonner'
+import { AskSproutie } from '@/components/ask-sproutie'
 import './globals.css'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -45,6 +46,7 @@ export default function RootLayout({
           <SiteFooter />
         </div>
         <Toaster />
+        <AskSproutie />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
