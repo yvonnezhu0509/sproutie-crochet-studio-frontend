@@ -18,48 +18,12 @@ interface Message {
 }
 
 // ---------------------------------------------------------------------------
-// Mock responses — swap for a real API route when ready
-// ---------------------------------------------------------------------------
-const MOCK_RESPONSES: Record<string, string> = {
-  default:
-    "Hi! I'm Sproutie, your crochet studio guide. I can help with kit details, the Design Studio, materials, skill levels, and shipping. What would you like to know?",
-  kit: "Our kits include everything you need — curated yarn, hardware, handles, a written pattern, and a photo guide. Each kit is designed to be made at home with standard hooks you likely already own.",
-  design:
-    "The Design Studio is our AI-assisted bag design tool. You pick a style, size, colors, and handles through a guided flow. At the end you get a design summary and a materials list. It's still a prototype — we're refining it.",
-  shipping:
-    "We ship within North America. Standard shipping takes 5–10 business days. We're working on international options — join the newsletter to hear when they launch.",
-  skill:
-    "Our kits are designed for intermediate crocheters — you should be comfortable with single and half-double crochet, basic tension control, and joining yarn. Beginners with a few finished projects will do fine.",
-  price:
-    "Kit prices range from $48 to $84 USD depending on the bag style and included materials. Prices include all yarn, hardware, and pattern access.",
-  yarn: "We use high-quality 100% cotton yarn in each kit — it's durable, washable, and holds structure well for bags. Each kit specifies the exact weight and meterage needed.",
-}
-
-function getMockResponse(text: string): string {
-  const lower = text.toLowerCase()
-  if (lower.includes('kit') || lower.includes('include') || lower.includes('what') && lower.includes('get'))
-    return MOCK_RESPONSES.kit
-  if (lower.includes('design') || lower.includes('studio') || lower.includes('ai') || lower.includes('tool'))
-    return MOCK_RESPONSES.design
-  if (lower.includes('ship') || lower.includes('deliver') || lower.includes('international'))
-    return MOCK_RESPONSES.shipping
-  if (lower.includes('skill') || lower.includes('level') || lower.includes('beginner') || lower.includes('hard'))
-    return MOCK_RESPONSES.skill
-  if (lower.includes('price') || lower.includes('cost') || lower.includes('how much') || lower.includes('$'))
-    return MOCK_RESPONSES.price
-  if (lower.includes('yarn') || lower.includes('material') || lower.includes('fiber') || lower.includes('cotton'))
-    return MOCK_RESPONSES.yarn
-  return "That's a great question. I don't have a specific answer for that right now, but you can reach us via the newsletter signup — we read every reply and will get back to you."
-}
-
-// ---------------------------------------------------------------------------
 // Suggestion chips shown in the empty state
 // ---------------------------------------------------------------------------
-const SUGGESTIONS = [
-  "What's in a kit?",
-  "How does the Design Studio work?",
-  "What skill level do I need?",
-  "How much do kits cost?",
+const DEFAULT_SUGGESTIONS = [
+  'How does the AI Bag Design Studio work?',
+  'What comes in a Studio Originals kit?',
+  'Can I share my own bag design?',
 ]
 
 // ---------------------------------------------------------------------------
@@ -71,7 +35,7 @@ export function AskSproutie() {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
-  const [msgCount, setMsgCount] = useState(0)
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>(DEFAULT_SUGGESTIONS)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -162,26 +126,79 @@ export function AskSproutie() {
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  function send(text: string) {
+  async function send(text: string) {
     const trimmed = text.trim()
     if (!trimmed || loading) return
-    const userMsg: Message = { id: `${uid}-${msgCount}`, role: 'user', content: trimmed }
-    setMessages((prev) => [...prev, userMsg])
-    setMsgCount((n) => n + 1)
+
+    const userMsg: Message = {
+      id: `${uid}-${Date.now()}-user`,
+      role: 'user',
+      content: trimmed,
+    }
+
+    const nextMessages = [...messages, userMsg]
+
+    setMessages(nextMessages)
     setInput('')
     setLoading(true)
 
-    // Simulate a short delay for realism
-    setTimeout(() => {
-      const reply: Message = {
-        id: `${uid}-${msgCount + 1}`,
-        role: 'assistant',
-        content: getMockResponse(trimmed),
+    try {
+      console.log('Sending Ask Sproutie request to /api/support-chat')
+
+      const response = await fetch('/api/support-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: trimmed,
+          messages: nextMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error('Ask Sproutie API error:', data)
+        throw new Error(data?.error || `Support chat failed with status ${response.status}`)
       }
-      setMessages((prev) => [...prev, reply])
-      setMsgCount((n) => n + 2)
+
+      const assistantText =
+        data?.assistantMessage ||
+        data?.message ||
+        "I'm sorry, I couldn't generate a response right now."
+
+      const assistantMsg: Message = {
+        id: `${uid}-${Date.now()}-assistant`,
+        role: 'assistant',
+        content: assistantText,
+      }
+
+      setMessages((prev) => [...prev, assistantMsg])
+
+      if (Array.isArray(data?.suggestedQuestions)) {
+        setSuggestedQuestions(
+          data.suggestedQuestions
+            .filter((q: unknown) => typeof q === 'string' && q.trim().length > 0)
+            .slice(0, 4),
+        )
+      }
+    } catch (error) {
+      console.error('Ask Sproutie request failed:', error)
+
+      const errorMsg: Message = {
+        id: `${uid}-${Date.now()}-error`,
+        role: 'assistant',
+        content: 'Ask Sproutie is temporarily unavailable. Please try again later.',
+      }
+
+      setMessages((prev) => [...prev, errorMsg])
+    } finally {
       setLoading(false)
-    }, 700 + Math.random() * 400)
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -271,7 +288,7 @@ export function AskSproutie() {
               <Sparkles className="size-3" />
             </span>
             <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-3.5 py-2.5 text-sm leading-relaxed">
-              Hi! I&apos;m Sproutie. Ask me about kits, the Design Studio, materials, or shipping.
+              Hi, I&apos;m Sproutie&apos;s studio assistant. I can help with kits, design drafts, materials, and how the studio works.
             </div>
           </div>
 
@@ -322,7 +339,7 @@ export function AskSproutie() {
         {/* Suggestion chips — show only when no user messages yet */}
         {isEmpty && (
           <div className="flex shrink-0 flex-wrap gap-2 border-t border-border/50 px-4 py-3 sm:px-5">
-            {SUGGESTIONS.map((s) => (
+            {suggestedQuestions.map((s) => (
               <button
                 key={s}
                 type="button"
@@ -383,7 +400,6 @@ export function AskSproutie() {
           open
             ? 'scale-95 opacity-0 pointer-events-none'
             : 'scale-100 opacity-100',
-          // Collapsed: pill with label on desktop, round on mobile
           'h-12 px-5 sm:h-12',
         )}
       >
