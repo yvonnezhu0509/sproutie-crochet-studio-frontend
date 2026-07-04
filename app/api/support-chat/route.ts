@@ -40,10 +40,6 @@ export async function POST(req: NextRequest) {
     const rawKey = process.env.OPENROUTER_API_KEY ?? ""
     const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "")
 
-    console.log("[support-chat] key exists:", Boolean(apiKey))
-    console.log("[support-chat] key prefix ok:", apiKey.startsWith("sk-or-v1-"))
-    console.log("[support-chat] key length:", apiKey.length)
-
     if (!apiKey) {
       console.error("[support-chat] Missing OPENROUTER_API_KEY")
       return jsonResponse(
