@@ -2,55 +2,84 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'edge'
 
-const SYSTEM_PROMPT = `You are Sproutie, a friendly and knowledgeable support assistant for Sproutie Crochet Studio — a contemporary crochet design studio that sells original bag kits and offers an AI-assisted Bag Design Studio.
+// ---------------------------------------------------------------------------
+// System prompt
+// ---------------------------------------------------------------------------
+const SYSTEM_PROMPT = `You are Sproutie, the friendly studio assistant for Sproutie Crochet Studio — an independent crochet bag design studio for North American makers.
 
-Your role:
-- Answer questions about crochet bag kits, the AI Bag Design Studio, ordering, materials, and skill levels
-- Help users navigate the website and find the right kit for their needs
-- Offer encouragement and practical guidance to crafters of all skill levels
-- Be warm, concise, and imaginative — match the studio's editorial, design-forward tone
-- If you don't know something specific (e.g. live stock, exact shipping times), say so honestly and suggest the user contacts the studio directly
+Knowledge:
+- Studio Originals are original crochet bag kits designed and tested by the studio. Each kit includes everything a maker needs to complete a specific bag.
+- The AI Bag Design Studio helps users turn inspiration into a crochet bag concept, a draft pattern direction, and an estimated materials plan. AI-generated designs are drafts, not guaranteed final tested patterns.
+- The Community section is for sharing crochet bag concepts, works in progress, finished bags, and constructive feedback.
+- Custom materials kits are not automatically available and may require human review.
 
-Keep responses concise — 2–4 sentences where possible. Use plain prose, not bullet lists, unless listing steps or materials. Never make up prices, availability, or shipping details you don't know for certain.`
+Rules:
+- Be concise, warm, clear, and honest.
+- Do not invent inventory, prices, shipping timelines, or policies.
+- Do not promise that custom kits are available.
+- Do not claim AI-generated patterns are fully tested.
+- Do not provide or redistribute paid crochet patterns.
+- If human review is needed, say that the studio will need to review the request.
+- If the answer is unknown, say so instead of guessing.
+- Use US crochet terminology by default.
+- Use inches first and centimeters second when relevant.
+- Keep replies to 2–4 sentences unless detail is clearly needed. Use plain prose, not bullet lists.
 
+At the end of each reply, suggest 1–3 short follow-up questions as a JSON array in this exact format on its own line:
+SUGGESTED: ["question one", "question two"]
+If no follow-up questions are relevant, omit the SUGGESTED line entirely.`
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 interface Message {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
 }
 
-const errorJson = (msg: string, status = 500) =>
-  NextResponse.json({ error: msg }, { status })
-
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
-  // Trim whitespace and strip any accidental "Bearer " prefix stored in the env var
+  // Read and sanitise the API key server-side only
   const rawKey = process.env.OPENROUTER_API_KEY ?? ''
   const apiKey = rawKey.trim().replace(/^Bearer\s+/i, '')
 
   if (!apiKey) {
     console.error('[support-chat] OPENROUTER_API_KEY is missing or empty')
-    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
+    return NextResponse.json(
+      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
+      { status: 500 },
+    )
   }
-  console.log(
-    `[support-chat] API key present — prefix: "${apiKey.slice(0, 6)}…" length: ${apiKey.length}`,
-  )
 
-  // Accept { messages: [...] } or { message: "string" }
-  let messages: Message[]
+  // Model — override via env var if needed
+  const model = (process.env.OPENROUTER_SUPPORT_MODEL ?? 'openrouter/auto').trim()
+
+  // Parse request body — accept { message } or { messages }
+  let userMessages: Message[]
   try {
     const body = await req.json()
-    if (typeof body.message === 'string') {
-      messages = [{ role: 'user', content: body.message.trim() }]
+    if (typeof body.message === 'string' && body.message.trim()) {
+      userMessages = [{ role: 'user', content: body.message.trim() }]
     } else if (Array.isArray(body.messages) && body.messages.length > 0) {
-      messages = body.messages
+      userMessages = body.messages as Message[]
     } else {
-      return errorJson('Provide either a "message" string or a "messages" array.', 400)
+      return NextResponse.json(
+        { error: 'Provide either a "message" string or a non-empty "messages" array.' },
+        { status: 400 },
+      )
     }
   } catch {
-    return errorJson('Invalid JSON body.', 400)
+    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
 
-  const fullMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
+  const fullMessages: Message[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...userMessages,
+  ]
 
+  // Call OpenRouter
   let upstream: Response
   try {
     upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -62,40 +91,62 @@ export async function POST(req: NextRequest) {
         'X-Title': 'Sproutie Crochet Studio',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-120b:free',
+        model,
         messages: fullMessages,
         stream: false,
+        max_tokens: 512,
       }),
     })
   } catch (err) {
-    console.error('[support-chat] Fetch to OpenRouter failed:', err)
-    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
+    console.error('[support-chat] Network error reaching OpenRouter:', err)
+    return NextResponse.json(
+      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
+      { status: 502 },
+    )
   }
 
   if (!upstream.ok) {
-    const text = await upstream.text().catch(() => '(unreadable)')
-    console.error(`[support-chat] OpenRouter error ${upstream.status}:`, text)
-    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.', upstream.status)
+    const text = await upstream.text().catch(() => '')
+    console.error(`[support-chat] OpenRouter responded ${upstream.status}:`, text)
+    return NextResponse.json(
+      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
+      { status: upstream.status },
+    )
   }
 
-  let data: unknown
+  let data: any
   try {
     data = await upstream.json()
   } catch {
-    console.error('[support-chat] Could not parse OpenRouter JSON response')
-    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
+    console.error('[support-chat] Failed to parse OpenRouter response as JSON')
+    return NextResponse.json(
+      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
+      { status: 500 },
+    )
   }
 
-  const assistantMessage: string =
-    (data as any)?.choices?.[0]?.message?.content?.trim() ?? ''
+  const raw: string = data?.choices?.[0]?.message?.content?.trim() ?? ''
 
-  if (!assistantMessage) {
-    console.error('[support-chat] Empty content in OpenRouter response:', JSON.stringify(data))
-    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
+  if (!raw) {
+    console.error('[support-chat] Empty content from OpenRouter. Full response:', JSON.stringify(data))
+    return NextResponse.json(
+      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
+      { status: 500 },
+    )
   }
 
-  return NextResponse.json({
-    assistantMessage,
-    suggestedQuestions: [] as string[],
-  })
+  // Parse optional SUGGESTED line from the model reply
+  let assistantMessage = raw
+  let suggestedQuestions: string[] = []
+
+  const suggestedMatch = raw.match(/^SUGGESTED:\s*(\[.+?\])\s*$/m)
+  if (suggestedMatch) {
+    try {
+      suggestedQuestions = JSON.parse(suggestedMatch[1])
+    } catch { /* ignore malformed suggestions */ }
+    // Strip the SUGGESTED line from the visible reply
+    assistantMessage = raw.replace(/^SUGGESTED:\s*\[.+?\]\s*$/m, '').trim()
+  }
+
+  return NextResponse.json({ assistantMessage, suggestedQuestions })
 }
