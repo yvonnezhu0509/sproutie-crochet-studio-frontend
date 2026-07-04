@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Model — override via env var if needed
-  const model = (process.env.OPENROUTER_SUPPORT_MODEL ?? 'openrouter/auto').trim()
+  const model = (process.env.OPENROUTER_SUPPORT_MODEL ?? 'openai/gpt-oss-120b:free').trim()
 
   // Parse request body — accept { message } or { messages }
   let userMessages: Message[]
@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
         messages: fullMessages,
         stream: false,
         max_tokens: 512,
+        reasoning: { enabled: true },
       }),
     })
   } catch (err) {
