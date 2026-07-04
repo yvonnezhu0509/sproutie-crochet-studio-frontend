@@ -124,7 +124,6 @@ export async function POST(req: NextRequest) {
     { status: 500 }
   )
 }
-}
 
 console.log("[support-chat] key exists:", Boolean(apiKey))
 console.log("[support-chat] key prefix ok:", apiKey.startsWith("sk-or-v1-"))
