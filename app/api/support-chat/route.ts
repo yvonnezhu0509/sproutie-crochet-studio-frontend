@@ -26,43 +26,96 @@ type IncomingMessage = {
   content: string
 }
 
+type OpenRouterMessage = {
+  role: "system" | "user" | "assistant"
+  content: string
+}
+
+function jsonResponse(data: unknown, status = 200) {
+  return NextResponse.json(data, { status })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const rawKey = process.env.OPENROUTER_API_KEY ?? ""
     const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "")
 
+    console.log("[support-chat] key exists:", Boolean(apiKey))
+    console.log("[support-chat] key prefix ok:", apiKey.startsWith("sk-or-v1-"))
+    console.log("[support-chat] key length:", apiKey.length)
+
     if (!apiKey) {
       console.error("[support-chat] Missing OPENROUTER_API_KEY")
-      return NextResponse.json(
-        { error: "Ask Sproutie is temporarily unavailable. Please try again later." },
-        { status: 500 }
+      return jsonResponse(
+        {
+          error: "Ask Sproutie is temporarily unavailable. Please try again later.",
+          debug: {
+            reason: "Missing OPENROUTER_API_KEY",
+          },
+        },
+        500
       )
     }
 
-    const body = await req.json()
+    const body = await req.json().catch(() => null)
 
-    const incomingMessages: IncomingMessage[] = Array.isArray(body.messages)
-      ? body.messages
-          .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-          .slice(-8)
+    if (!body || typeof body !== "object") {
+      return jsonResponse(
+        {
+          error: "Invalid JSON body.",
+          debug: {
+            reason: "Request body is missing or not valid JSON.",
+          },
+        },
+        400
+      )
+    }
+
+    const rawMessages = Array.isArray((body as any).messages)
+      ? (body as any).messages
       : []
 
+    const incomingMessages: IncomingMessage[] = rawMessages
+      .filter(
+        (m: any) =>
+          m &&
+          (m.role === "user" || m.role === "assistant") &&
+          typeof m.content === "string" &&
+          m.content.trim().length > 0
+      )
+      .slice(-8)
+      .map((m: any) => ({
+        role: m.role,
+        content: m.content.trim(),
+      }))
+
     const userMessage =
-      typeof body.message === "string"
-        ? body.message
+      typeof (body as any).message === "string" &&
+      (body as any).message.trim().length > 0
+        ? (body as any).message.trim()
         : incomingMessages[incomingMessages.length - 1]?.content
 
     if (!userMessage) {
-      return NextResponse.json(
-        { error: "Message is required." },
-        { status: 400 }
+      return jsonResponse(
+        {
+          error: "Message is required.",
+          debug: {
+            reason: "No message or valid messages array was provided.",
+          },
+        },
+        400
       )
     }
 
-    const messages =
+    const conversationMessages: IncomingMessage[] =
       incomingMessages.length > 0
         ? incomingMessages
-        : [{ role: "user" as const, content: userMessage }]
+        : [{ role: "user", content: userMessage }]
+
+    const openRouterMessages: OpenRouterMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...conversationMessages,
+    ]
 
     const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -74,31 +127,63 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: process.env.OPENROUTER_SUPPORT_MODEL || "openrouter/free",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages,
-        ],
+        messages: openRouterMessages,
         stream: false,
         temperature: 0.4,
         max_tokens: 500,
       }),
     })
 
-    const data = await upstream.json()
+    const rawUpstreamText = await upstream.text()
+
+    let data: any = null
+
+    try {
+      data = rawUpstreamText ? JSON.parse(rawUpstreamText) : null
+    } catch {
+      console.error(
+        "[support-chat] OpenRouter returned non-JSON:",
+        rawUpstreamText
+      )
+
+      return jsonResponse(
+        {
+          error: "Ask Sproutie is temporarily unavailable. Please try again later.",
+          debug: {
+            reason: "OpenRouter returned non-JSON response.",
+            status: upstream.status,
+            raw: rawUpstreamText,
+          },
+        },
+        500
+      )
+    }
 
     if (!upstream.ok) {
-      console.error("[support-chat] OpenRouter error:", upstream.status, JSON.stringify(data))
-      return NextResponse.json(
-        { error: "Ask Sproutie is temporarily unavailable. Please try again later." },
-        { status: upstream.status }
+      console.error(
+        "[support-chat] OpenRouter error:",
+        upstream.status,
+        JSON.stringify(data)
+      )
+
+      return jsonResponse(
+        {
+          error: "Ask Sproutie is temporarily unavailable. Please try again later.",
+          debug: {
+            reason: "OpenRouter request failed.",
+            status: upstream.status,
+            upstream: data,
+          },
+        },
+        upstream.status
       )
     }
 
     const assistantMessage =
-      data?.choices?.[0]?.message?.content ||
+      data?.choices?.[0]?.message?.content?.trim() ||
       "I’m sorry, I couldn’t generate a response right now."
 
-    return NextResponse.json({
+    return jsonResponse({
       assistantMessage,
       suggestedQuestions: [
         "How does the AI Bag Design Studio work?",
@@ -108,9 +193,22 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error("[support-chat] route error:", error)
-    return NextResponse.json(
-      { error: "Ask Sproutie is temporarily unavailable. Please try again later." },
-      { status: 500 }
+
+    return jsonResponse(
+      {
+        error: "Ask Sproutie is temporarily unavailable. Please try again later.",
+        debug:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : {
+                message: String(error),
+              },
+      },
+      500
     )
   }
 }
