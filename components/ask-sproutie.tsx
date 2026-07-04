@@ -36,7 +36,9 @@ export function AskSproutie() {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
-  const [msgCount, setMsgCount] = useState(0)
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
+  // Use a ref for the ID counter so it's always current inside async closures
+  const msgCountRef = useRef(0)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -135,29 +137,34 @@ export function AskSproutie() {
     const trimmed = text.trim()
     if (!trimmed || loading) return
 
-    const userMsgId = `${uid}-u-${msgCount}`
-    const assistantMsgId = `${uid}-a-${msgCount}`
+    // Use ref counter so IDs are always unique even inside async closures
+    const count = msgCountRef.current++
+    const userMsgId = `${uid}-u-${count}`
+    const assistantMsgId = `${uid}-a-${count}`
     const userMsg: Message = { id: userMsgId, role: 'user', content: trimmed }
 
     // Snapshot history before updating state
     const history = [...messagesRef.current, userMsg].map(({ role, content }) => ({ role, content }))
 
     setMessages((prev) => [...prev, userMsg])
-    setMsgCount((n) => n + 1)
+    setSuggestedQuestions([])
     setInput('')
     setLoading(true)
+
+    console.log('[v0] Sending Ask Sproutie request to /api/support-chat')
 
     try {
       const res = await fetch('/api/support-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ message: trimmed, messages: history }),
       })
 
       const json = await res.json().catch(() => null)
 
       if (!res.ok || !json?.assistantMessage) {
         const errMsg = json?.error ?? 'Ask Sproutie is temporarily unavailable. Please try again later.'
+        console.error('[v0] Ask Sproutie API error:', res.status, json)
         setMessages((prev) => [
           ...prev,
           { id: assistantMsgId, role: 'assistant', content: errMsg },
@@ -169,7 +176,12 @@ export function AskSproutie() {
         ...prev,
         { id: assistantMsgId, role: 'assistant', content: json.assistantMessage },
       ])
-    } catch {
+
+      if (Array.isArray(json.suggestedQuestions) && json.suggestedQuestions.length > 0) {
+        setSuggestedQuestions(json.suggestedQuestions)
+      }
+    } catch (err) {
+      console.error('[v0] Ask Sproutie fetch failed:', err)
       setMessages((prev) => [
         ...prev,
         {
@@ -318,10 +330,10 @@ export function AskSproutie() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestion chips — show only when no user messages yet */}
-        {isEmpty && (
+        {/* Suggestion chips — default set when empty, API-returned set after replies */}
+        {(isEmpty || (!loading && suggestedQuestions.length > 0)) && (
           <div className="flex shrink-0 flex-wrap gap-2 border-t border-border/50 px-4 py-3 sm:px-5">
-            {SUGGESTIONS.map((s) => (
+            {(isEmpty ? SUGGESTIONS : suggestedQuestions).map((s) => (
               <button
                 key={s}
                 type="button"
