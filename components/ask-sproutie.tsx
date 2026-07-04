@@ -1,8 +1,12 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
-import { X, Send, ChevronDown, Sparkles, Loader } from 'lucide-react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { Send, ChevronDown, Sparkles, Loader } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const DEFAULT_HEIGHT = 480
+const MIN_HEIGHT = 360
+const STORAGE_KEY = 'ask-sproutie-panel-height'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,6 +76,62 @@ export function AskSproutie() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // ---- Resize state (desktop only) ----
+  const [panelHeight, setPanelHeight] = useState<number>(DEFAULT_HEIGHT)
+  const dragStartY = useRef<number>(0)
+  const dragStartH = useRef<number>(0)
+  const isResizing = useRef(false)
+
+  // Restore persisted height on mount (client-only)
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = parseInt(saved, 10)
+      if (!isNaN(parsed) && parsed >= MIN_HEIGHT) setPanelHeight(parsed)
+    }
+  }, [])
+
+  const getMaxHeight = () =>
+    typeof window !== 'undefined' ? Math.floor(window.innerHeight * 0.8) : 800
+
+  const clampHeight = (h: number) =>
+    Math.max(MIN_HEIGHT, Math.min(getMaxHeight(), h))
+
+  const onResizePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Desktop only: skip when panel is not a floating panel (< sm breakpoint)
+      if (window.innerWidth < 640) return
+      e.preventDefault()
+      isResizing.current = true
+      dragStartY.current = e.clientY
+      dragStartH.current = panelRef.current?.offsetHeight ?? panelHeight
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    },
+    [panelHeight],
+  )
+
+  const onResizePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isResizing.current) return
+    // Dragging up (negative delta) → increase height
+    const delta = dragStartY.current - e.clientY
+    const next = clampHeight(dragStartH.current + delta)
+    setPanelHeight(next)
+  }, [])
+
+  const onResizePointerUp = useCallback(() => {
+    if (!isResizing.current) return
+    isResizing.current = false
+    const h = panelRef.current?.offsetHeight ?? panelHeight
+    const clamped = clampHeight(h)
+    setPanelHeight(clamped)
+    localStorage.setItem(STORAGE_KEY, String(clamped))
+  }, [panelHeight])
+
+  const resetHeight = useCallback(() => {
+    setPanelHeight(DEFAULT_HEIGHT)
+    localStorage.setItem(STORAGE_KEY, String(DEFAULT_HEIGHT))
+  }, [])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -154,19 +214,34 @@ export function AskSproutie() {
         role="dialog"
         aria-modal="true"
         aria-label="Ask Sproutie — chat support"
+        style={{ '--panel-h': `${panelHeight}px` } as React.CSSProperties}
         className={cn(
           // Base — fixed, sits above everything
-          'fixed z-50 flex flex-col overflow-hidden shadow-2xl transition-all duration-300',
-          // Mobile: bottom sheet — slides up from bottom
+          'fixed z-50 flex flex-col overflow-hidden shadow-2xl transition-[transform,opacity] duration-300',
+          // Mobile: bottom sheet — slides up from bottom, fixed 80dvh
           'bottom-0 left-0 right-0 rounded-t-2xl border border-border bg-card',
+          'h-[80dvh]',
+          // Desktop: floating panel with user-controlled height
           'sm:bottom-6 sm:left-auto sm:right-6 sm:w-[380px] sm:rounded-2xl',
-          // Height
-          'max-h-[85dvh] sm:max-h-[560px]',
+          'sm:h-[var(--panel-h)] sm:min-h-[360px] sm:max-h-[80vh]',
           open
             ? 'translate-y-0 opacity-100 pointer-events-auto'
             : 'translate-y-full opacity-0 pointer-events-none sm:translate-y-4',
         )}
       >
+        {/* Resize handle — desktop only, drag to resize vertically */}
+        <div
+          aria-hidden="true"
+          onPointerDown={onResizePointerDown}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+          onDoubleClick={resetHeight}
+          title="Drag to resize · Double-click to reset"
+          className="group hidden shrink-0 cursor-ns-resize touch-none select-none items-center justify-center py-1.5 sm:flex"
+        >
+          <div className="h-1 w-8 rounded-full bg-border transition-colors group-hover:bg-muted-foreground/40" />
+        </div>
+
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-5">
           <div className="flex items-center gap-2.5">
