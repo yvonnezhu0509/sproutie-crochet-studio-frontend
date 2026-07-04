@@ -1,153 +1,137 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 export const runtime = 'edge'
 
-// ---------------------------------------------------------------------------
-// System prompt
-// ---------------------------------------------------------------------------
-const SYSTEM_PROMPT = `You are Sproutie, the friendly studio assistant for Sproutie Crochet Studio — an independent crochet bag design studio for North American makers.
+const SYSTEM_PROMPT = `You are Sproutie, a friendly and knowledgeable support assistant for Sproutie Crochet Studio — a contemporary crochet design studio that sells original bag kits and offers an AI-assisted Bag Design Studio.
 
-Knowledge:
-- Studio Originals are original crochet bag kits designed and tested by the studio. Each kit includes everything a maker needs to complete a specific bag.
-- The AI Bag Design Studio helps users turn inspiration into a crochet bag concept, a draft pattern direction, and an estimated materials plan. AI-generated designs are drafts, not guaranteed final tested patterns.
-- The Community section is for sharing crochet bag concepts, works in progress, finished bags, and constructive feedback.
-- Custom materials kits are not automatically available and may require human review.
+Your role:
+- Answer questions about crochet bag kits, the AI Bag Design Studio, ordering, materials, and skill levels
+- Help users navigate the website and find the right kit for their needs
+- Offer encouragement and practical guidance to crafters of all skill levels
+- Be warm, concise, and imaginative — match the studio's editorial, design-forward tone
+- If you don't know something specific (e.g. live stock, exact shipping times), say so honestly and suggest the user contacts the studio directly
 
-Rules:
-- Be concise, warm, clear, and honest.
-- Do not invent inventory, prices, shipping timelines, or policies.
-- Do not promise that custom kits are available.
-- Do not claim AI-generated patterns are fully tested.
-- Do not provide or redistribute paid crochet patterns.
-- If human review is needed, say that the studio will need to review the request.
-- If the answer is unknown, say so instead of guessing.
-- Use US crochet terminology by default.
-- Use inches first and centimeters second when relevant.
-- Keep replies to 2–4 sentences unless detail is clearly needed. Use plain prose, not bullet lists.
+Keep responses concise — 2–4 sentences where possible. Use plain prose, not bullet lists, unless listing steps or materials. Never make up prices, availability, or shipping details you don't know for certain.`
 
-At the end of each reply, suggest 1–3 short follow-up questions as a JSON array in this exact format on its own line:
-SUGGESTED: ["question one", "question two"]
-If no follow-up questions are relevant, omit the SUGGESTED line entirely.`
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 interface Message {
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant'
   content: string
 }
 
-// ---------------------------------------------------------------------------
-// Handler
-// ---------------------------------------------------------------------------
+interface RequestBody {
+  messages: Message[]
+}
+
 export async function POST(req: NextRequest) {
-  // Read and sanitise the API key server-side only
-  const rawKey = process.env.OPENROUTER_API_KEY ?? ''
-  const apiKey = rawKey.trim().replace(/^Bearer\s+/i, '')
-
+  const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
-    console.error('[support-chat] OPENROUTER_API_KEY is missing or empty')
-    return NextResponse.json(
-      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
-      { status: 500 },
+    return new Response(
+      JSON.stringify({ error: 'OPENROUTER_API_KEY is not configured.' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
     )
   }
 
-  // Model — override via env var if needed
-  const model = (process.env.OPENROUTER_SUPPORT_MODEL ?? 'openai/gpt-oss-120b:free').trim()
-
-  // Parse request body — accept { message } or { messages }
-  let userMessages: Message[]
+  let body: RequestBody
   try {
-    const body = await req.json()
-    if (typeof body.message === 'string' && body.message.trim()) {
-      userMessages = [{ role: 'user', content: body.message.trim() }]
-    } else if (Array.isArray(body.messages) && body.messages.length > 0) {
-      userMessages = body.messages as Message[]
-    } else {
-      return NextResponse.json(
-        { error: 'Provide either a "message" string or a non-empty "messages" array.' },
-        { status: 400 },
-      )
-    }
+    body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
-  }
-
-  const fullMessages: Message[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...userMessages,
-  ]
-
-  // Call OpenRouter
-  let upstream: Response
-  try {
-    upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://sproutie.studio',
-        'X-Title': 'Sproutie Crochet Studio',
-      },
-      body: JSON.stringify({
-        model,
-        messages: fullMessages,
-        stream: false,
-        max_tokens: 512,
-        reasoning: { enabled: true },
-      }),
+    return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
     })
-  } catch (err) {
-    console.error('[support-chat] Network error reaching OpenRouter:', err)
-    return NextResponse.json(
-      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
-      { status: 502 },
-    )
   }
+
+  const { messages } = body
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: 'messages array is required.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Prepend system prompt
+  const fullMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
+
+  const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://sproutie.studio',
+      'X-Title': 'Sproutie Crochet Studio',
+    },
+    body: JSON.stringify({
+      model: 'openai/gpt-oss-120b:free',
+      messages: fullMessages,
+      stream: true,
+      reasoning: { enabled: true },
+    }),
+  })
 
   if (!upstream.ok) {
-    const text = await upstream.text().catch(() => '')
-    console.error(`[support-chat] OpenRouter responded ${upstream.status}:`, text)
-    return NextResponse.json(
-      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
-      { status: upstream.status },
+    const text = await upstream.text()
+    return new Response(
+      JSON.stringify({ error: `OpenRouter error ${upstream.status}: ${text}` }),
+      { status: upstream.status, headers: { 'Content-Type': 'application/json' } },
     )
   }
 
-  let data: any
-  try {
-    data = await upstream.json()
-  } catch {
-    console.error('[support-chat] Failed to parse OpenRouter response as JSON')
-    return NextResponse.json(
-      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
-      { status: 500 },
-    )
-  }
+  // Pass the SSE stream straight through to the client, but filter out
+  // reasoning-only delta chunks so only content tokens reach the UI.
+  const reader = upstream.body!.getReader()
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
 
-  const raw: string = data?.choices?.[0]?.message?.content?.trim() ?? ''
+  const stream = new ReadableStream({
+    async pull(controller) {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          controller.close()
+          return
+        }
 
-  if (!raw) {
-    console.error('[support-chat] Empty content from OpenRouter. Full response:', JSON.stringify(data))
-    return NextResponse.json(
-      { error: 'Ask Sproutie is temporarily unavailable. Please try again later.' },
-      { status: 500 },
-    )
-  }
+        const chunk = decoder.decode(value, { stream: true })
+        // Each chunk may contain multiple SSE lines
+        const lines = chunk.split('\n')
 
-  // Parse optional SUGGESTED line from the model reply
-  let assistantMessage = raw
-  let suggestedQuestions: string[] = []
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) {
+            // Pass blank lines / comments through to keep SSE framing intact
+            controller.enqueue(encoder.encode(line + '\n'))
+            continue
+          }
 
-  const suggestedMatch = raw.match(/^SUGGESTED:\s*(\[.+?\])\s*$/m)
-  if (suggestedMatch) {
-    try {
-      suggestedQuestions = JSON.parse(suggestedMatch[1])
-    } catch { /* ignore malformed suggestions */ }
-    // Strip the SUGGESTED line from the visible reply
-    assistantMessage = raw.replace(/^SUGGESTED:\s*\[.+?\]\s*$/m, '').trim()
-  }
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') {
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            continue
+          }
 
-  return NextResponse.json({ assistantMessage, suggestedQuestions })
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed?.choices?.[0]?.delta ?? {}
+            // Only forward chunks that carry visible content; skip reasoning-only deltas
+            if (delta.content !== undefined && delta.content !== null) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`))
+            }
+          } catch {
+            // Malformed JSON — pass through as-is
+            controller.enqueue(encoder.encode(line + '\n\n'))
+          }
+        }
+      }
+    },
+    cancel() {
+      reader.cancel()
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  })
 }
