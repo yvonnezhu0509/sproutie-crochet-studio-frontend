@@ -23,13 +23,21 @@ interface RequestBody {
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENROUTER_API_KEY
+  // Trim whitespace and reject keys that mistakenly include the "Bearer " prefix
+  const rawKey = process.env.OPENROUTER_API_KEY ?? ''
+  const apiKey = rawKey.trim().replace(/^Bearer\s+/i, '')
+
+  // Safe server-side diagnostics — never log the full key
   if (!apiKey) {
+    console.error('[support-chat] OPENROUTER_API_KEY is missing or empty')
     return new Response(
-      JSON.stringify({ error: 'OPENROUTER_API_KEY is not configured.' }),
+      JSON.stringify({ error: 'Ask Sproutie is temporarily unavailable. Please try again later.' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
     )
   }
+  console.log(
+    `[support-chat] API key present — prefix: "${apiKey.slice(0, 6)}…" length: ${apiKey.length}`,
+  )
 
   let body: RequestBody
   try {
@@ -70,8 +78,10 @@ export async function POST(req: NextRequest) {
 
   if (!upstream.ok) {
     const text = await upstream.text()
+    // Log the raw upstream error server-side for debugging, but don't expose it to the browser
+    console.error(`[support-chat] OpenRouter error ${upstream.status}:`, text)
     return new Response(
-      JSON.stringify({ error: `OpenRouter error ${upstream.status}: ${text}` }),
+      JSON.stringify({ error: 'Ask Sproutie is temporarily unavailable. Please try again later.' }),
       { status: upstream.status, headers: { 'Content-Type': 'application/json' } },
     )
   }
