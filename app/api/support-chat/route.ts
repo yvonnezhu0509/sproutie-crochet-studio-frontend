@@ -107,12 +107,23 @@ export async function POST(req: NextRequest) {
       ],
     })
   } catch (error) {
-    console.error("[support-chat] route error:", error)
-    return NextResponse.json(
-      { error: "Ask Sproutie is temporarily unavailable. Please try again later." },
-      { status: 500 }
-    )
-  }
+  console.error("[support-chat] route error:", error)
+
+  return NextResponse.json(
+    {
+      error: "Ask Sproutie is temporarily unavailable. Please try again later.",
+      debug:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : String(error),
+    },
+    { status: 500 }
+  )
+}
 }
 
 console.log("[support-chat] key exists:", Boolean(apiKey))
