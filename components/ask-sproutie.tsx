@@ -139,17 +139,13 @@ export function AskSproutie() {
     const assistantMsgId = `${uid}-a-${msgCount}`
     const userMsg: Message = { id: userMsgId, role: 'user', content: trimmed }
 
+    // Snapshot history before updating state
+    const history = [...messagesRef.current, userMsg].map(({ role, content }) => ({ role, content }))
+
     setMessages((prev) => [...prev, userMsg])
     setMsgCount((n) => n + 1)
     setInput('')
     setLoading(true)
-
-    // Build history to send (exclude the streaming placeholder)
-    const history: { role: 'user' | 'assistant'; content: string }[] =
-      [...messagesRef.current, userMsg].map(({ role, content }) => ({ role, content }))
-
-    // Add an empty assistant placeholder so the typing indicator is replaced by streamed text
-    setMessages((prev) => [...prev, { id: assistantMsgId, role: 'assistant', content: '' }])
 
     try {
       const res = await fetch('/api/support-chat', {
@@ -158,59 +154,30 @@ export function AskSproutie() {
         body: JSON.stringify({ messages: history }),
       })
 
-      if (!res.ok || !res.body) {
-        const errText = await res.text().catch(() => 'Unknown error')
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId
-              ? { ...m, content: `Sorry, something went wrong. (${res.status}) ${errText}` }
-              : m,
-          ),
-        )
-        setLoading(false)
+      const json = await res.json().catch(() => null)
+
+      if (!res.ok || !json?.assistantMessage) {
+        const errMsg = json?.error ?? 'Ask Sproutie is temporarily unavailable. Please try again later.'
+        setMessages((prev) => [
+          ...prev,
+          { id: assistantMsgId, role: 'assistant', content: errMsg },
+        ])
         return
       }
 
-      // Stream SSE tokens into the assistant placeholder
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') break
-
-          try {
-            const parsed = JSON.parse(data)
-            const token: string = parsed?.choices?.[0]?.delta?.content ?? ''
-            if (!token) continue
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId ? { ...m, content: m.content + token } : m,
-              ),
-            )
-          } catch {
-            // Ignore malformed chunks
-          }
-        }
-      }
-    } catch (err) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMsgId
-            ? { ...m, content: 'Sorry, I could not connect right now. Please try again shortly.' }
-            : m,
-        ),
-      )
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantMsgId, role: 'assistant', content: json.assistantMessage },
+      ])
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: 'Ask Sproutie is temporarily unavailable. Please try again later.',
+        },
+      ])
     } finally {
       setLoading(false)
     }
@@ -334,8 +301,8 @@ export function AskSproutie() {
             </div>
           ))}
 
-          {/* Loading dots — visible only until first token streams in */}
-          {loading && messages.every((m) => m.role !== 'assistant' || m.content !== '') === false && (
+          {/* Loading dots */}
+          {loading && (
             <div className="flex gap-2.5">
               <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Sparkles className="size-3" />

@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'edge'
 
@@ -18,130 +18,84 @@ interface Message {
   content: string
 }
 
-interface RequestBody {
-  messages: Message[]
-}
+const errorJson = (msg: string, status = 500) =>
+  NextResponse.json({ error: msg }, { status })
 
 export async function POST(req: NextRequest) {
-  // Trim whitespace and reject keys that mistakenly include the "Bearer " prefix
+  // Trim whitespace and strip any accidental "Bearer " prefix stored in the env var
   const rawKey = process.env.OPENROUTER_API_KEY ?? ''
   const apiKey = rawKey.trim().replace(/^Bearer\s+/i, '')
 
-  // Safe server-side diagnostics — never log the full key
   if (!apiKey) {
     console.error('[support-chat] OPENROUTER_API_KEY is missing or empty')
-    return new Response(
-      JSON.stringify({ error: 'Ask Sproutie is temporarily unavailable. Please try again later.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
-    )
+    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
   }
   console.log(
     `[support-chat] API key present — prefix: "${apiKey.slice(0, 6)}…" length: ${apiKey.length}`,
   )
 
-  let body: RequestBody
+  // Accept { messages: [...] } or { message: "string" }
+  let messages: Message[]
   try {
-    body = await req.json()
+    const body = await req.json()
+    if (typeof body.message === 'string') {
+      messages = [{ role: 'user', content: body.message.trim() }]
+    } else if (Array.isArray(body.messages) && body.messages.length > 0) {
+      messages = body.messages
+    } else {
+      return errorJson('Provide either a "message" string or a "messages" array.', 400)
+    }
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorJson('Invalid JSON body.', 400)
   }
 
-  const { messages } = body
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return new Response(JSON.stringify({ error: 'messages array is required.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  // Prepend system prompt
   const fullMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
 
-  const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://sproutie.studio',
-      'X-Title': 'Sproutie Crochet Studio',
-    },
-    body: JSON.stringify({
-      model: 'openai/gpt-oss-120b:free',
-      messages: fullMessages,
-      stream: true,
-      reasoning: { enabled: true },
-    }),
-  })
-
-  if (!upstream.ok) {
-    const text = await upstream.text()
-    // Log the raw upstream error server-side for debugging, but don't expose it to the browser
-    console.error(`[support-chat] OpenRouter error ${upstream.status}:`, text)
-    return new Response(
-      JSON.stringify({ error: 'Ask Sproutie is temporarily unavailable. Please try again later.' }),
-      { status: upstream.status, headers: { 'Content-Type': 'application/json' } },
-    )
+  let upstream: Response
+  try {
+    upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://sproutie.studio',
+        'X-Title': 'Sproutie Crochet Studio',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-oss-120b:free',
+        messages: fullMessages,
+        stream: false,
+      }),
+    })
+  } catch (err) {
+    console.error('[support-chat] Fetch to OpenRouter failed:', err)
+    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
   }
 
-  // Pass the SSE stream straight through to the client, but filter out
-  // reasoning-only delta chunks so only content tokens reach the UI.
-  const reader = upstream.body!.getReader()
-  const encoder = new TextEncoder()
-  const decoder = new TextDecoder()
+  if (!upstream.ok) {
+    const text = await upstream.text().catch(() => '(unreadable)')
+    console.error(`[support-chat] OpenRouter error ${upstream.status}:`, text)
+    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.', upstream.status)
+  }
 
-  const stream = new ReadableStream({
-    async pull(controller) {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          controller.close()
-          return
-        }
+  let data: unknown
+  try {
+    data = await upstream.json()
+  } catch {
+    console.error('[support-chat] Could not parse OpenRouter JSON response')
+    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
+  }
 
-        const chunk = decoder.decode(value, { stream: true })
-        // Each chunk may contain multiple SSE lines
-        const lines = chunk.split('\n')
+  const assistantMessage: string =
+    (data as any)?.choices?.[0]?.message?.content?.trim() ?? ''
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) {
-            // Pass blank lines / comments through to keep SSE framing intact
-            controller.enqueue(encoder.encode(line + '\n'))
-            continue
-          }
+  if (!assistantMessage) {
+    console.error('[support-chat] Empty content in OpenRouter response:', JSON.stringify(data))
+    return errorJson('Ask Sproutie is temporarily unavailable. Please try again later.')
+  }
 
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') {
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-            continue
-          }
-
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed?.choices?.[0]?.delta ?? {}
-            // Only forward chunks that carry visible content; skip reasoning-only deltas
-            if (delta.content !== undefined && delta.content !== null) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`))
-            }
-          } catch {
-            // Malformed JSON — pass through as-is
-            controller.enqueue(encoder.encode(line + '\n\n'))
-          }
-        }
-      }
-    },
-    cancel() {
-      reader.cancel()
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
+  return NextResponse.json({
+    assistantMessage,
+    suggestedQuestions: [] as string[],
   })
 }
