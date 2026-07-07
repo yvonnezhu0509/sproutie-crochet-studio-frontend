@@ -28,6 +28,7 @@ export function SiteHeader() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       setAuthLoading(false)
+      alert('aaaaaaaaaaaa')
       alert(supabase.auth.getUser().user_metadata.full_name)
     })
 
