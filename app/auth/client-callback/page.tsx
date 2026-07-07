@@ -1,17 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ClientCallbackPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [message, setMessage] = useState('Signing you in...')
 
   useEffect(() => {
     async function run() {
-      const code = searchParams.get('code')
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
 
       if (!code) {
         setMessage('Missing sign-in code.')
@@ -34,7 +34,7 @@ export default function ClientCallbackPage() {
     }
 
     run()
-  }, [router, searchParams])
+  }, [router])
 
   return (
     <main className="flex min-h-[60vh] items-center justify-center px-6 text-center">
