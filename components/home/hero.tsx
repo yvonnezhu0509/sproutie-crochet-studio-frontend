@@ -14,7 +14,7 @@ export function Hero() {
           </p>
 
           <h1 className="text-balance font-heading text-[clamp(2.6rem,6vw,5.25rem)] font-semibold leading-[1.0] tracking-tight text-foreground">
-            Every11111111111111 bag starts<br className="hidden sm:block" /> with an idea.
+            Every bag starts<br className="hidden sm:block" /> with an idea.
           </h1>
 
           <p className="max-w-sm text-pretty text-lg leading-relaxed text-muted-foreground">
