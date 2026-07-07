@@ -22,12 +22,13 @@ export function SiteHeader() {
 
   useEffect(() => {
     const supabase = createClient()
-alert('sdaaaasdasdasd')
+
     // onAuthStateChange fires immediately with the current session on mount,
     // so we use it as the single source of truth — no separate getUser() call.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       setAuthLoading(false)
+      alert(supabase.auth.getUser().user_metadata.full_name)
     })
 
     return () => subscription.unsubscribe()
