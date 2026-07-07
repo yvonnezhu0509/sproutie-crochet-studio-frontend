@@ -37,6 +37,7 @@ export default function ClientCallbackPage() {
           setDebug(`SESSION CREATED BUT GET USER ERROR: ${userError.message}`)
           return
         }else{
+          alert('11111111111')
           alert(user?.user_metadata.full_namez)
         }
 
