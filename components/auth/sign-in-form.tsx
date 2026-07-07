@@ -31,7 +31,8 @@ export function SignInForm() {
     })
     // browser will redirect; no need to setGoogleLoading(false)
     const {data:{user},error)= await supabase.auth.getUser()
-    alert(user)
+    if(error) alert('errorxxx')
+    else alert(user)
   }
 
   function validate() {
