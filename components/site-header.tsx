@@ -1,17 +1,57 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { navLinks } from '@/lib/content'
 import { Logo } from '@/components/logo'
 import { AnnouncementBar } from '@/components/announcement-bar'
+import { createClient } from '@/lib/supabase/client'
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const pathname = usePathname()
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    async function loadUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      setUserEmail(user?.email ?? null)
+      setAuthLoading(false)
+    }
+
+    loadUser()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null)
+      setAuthLoading(false)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    setUserEmail(null)
+    setOpen(false)
+    router.refresh()
+  }
+
+  const isAuthPage = pathname === '/sign-in' || pathname === '/sign-up'
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -28,7 +68,7 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        {/* Desktop nav — minimal, no CTA buttons */}
+        {/* Desktop nav */}
         <nav className="hidden items-center gap-0 lg:flex" aria-label="Primary">
           {navLinks.map((link) => {
             const active =
@@ -48,7 +88,7 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Desktop right — quiet links */}
+        {/* Desktop right */}
         <div className="hidden items-center gap-5 lg:flex">
           <Link
             href="/design"
@@ -56,15 +96,33 @@ export function SiteHeader() {
           >
             Design Studio
           </Link>
-          <Link
-            href="/sign-in"
-            className={cn(
-              'text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-              (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
-            )}
-          >
-            Sign In
-          </Link>
+
+          {authLoading ? (
+            <span className="text-sm text-muted-foreground">Checking…</span>
+          ) : userEmail ? (
+            <div className="flex items-center gap-3">
+              <span className="max-w-[180px] truncate text-sm text-muted-foreground">
+                {userEmail}
+              </span>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/sign-in"
+              className={cn(
+                'text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+                isAuthPage && 'text-foreground',
+              )}
+            >
+              Sign In
+            </Link>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -80,10 +138,9 @@ export function SiteHeader() {
         </button>
       </div>
 
-      {/* Announcement bar — below nav chrome, above mobile panel */}
       <AnnouncementBar />
 
-      {/* Mobile nav — always in DOM, toggled with hidden to avoid SSR/client mismatch */}
+      {/* Mobile nav */}
       <div
         id="mobile-nav"
         className={cn(
@@ -109,17 +166,38 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+
           <div className="my-1 h-px bg-border" />
-          <Link
-            href="/sign-in"
-            onClick={() => setOpen(false)}
-            className={cn(
-              'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
-              (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
-            )}
-          >
-            Sign In
-          </Link>
+
+          {authLoading ? (
+            <span className="py-3 text-base text-muted-foreground">
+              Checking…
+            </span>
+          ) : userEmail ? (
+            <div className="flex flex-col gap-2 py-3">
+              <span className="truncate text-base text-muted-foreground">
+                {userEmail}
+              </span>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="text-left text-base text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/sign-in"
+              onClick={() => setOpen(false)}
+              className={cn(
+                'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                isAuthPage && 'text-foreground',
+              )}
+            >
+              Sign In
+            </Link>
+          )}
         </nav>
       </div>
     </header>
