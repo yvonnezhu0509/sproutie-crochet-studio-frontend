@@ -30,7 +30,6 @@ export function SignInForm() {
       },
     })
     // browser will redirect; no need to setGoogleLoading(false)
-alert(`${window.location.origin}/auth/client-callback`)
   }
 
   function validate() {
