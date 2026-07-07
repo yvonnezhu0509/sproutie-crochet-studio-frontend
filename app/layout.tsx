@@ -6,6 +6,8 @@ import { SiteFooter } from '@/components/site-footer'
 import { Toaster } from '@/components/ui/sonner'
 import { AskSproutie } from '@/components/ask-sproutie'
 import './globals.css'
+import { Suspense } from 'react'
+import { AuthCodeHandler } from '@/components/auth/auth-code-handler'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const fraunces = Fraunces({
@@ -41,6 +43,20 @@ export default function RootLayout({
     >
       <body className="font-sans antialiased">
         <div className="flex min-h-dvh flex-col">
+          <body className="font-sans antialiased">
+  <Suspense fallback={null}>
+    <AuthCodeHandler />
+  </Suspense>
+
+  <div className="flex min-h-dvh flex-col">
+    <SiteHeader />
+    <main className="flex-1">{children}</main>
+    <SiteFooter />
+  </div>
+  <Toaster />
+  <AskSproutie />
+  {process.env.NODE_ENV === 'production' && <Analytics />}
+</body>
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />
