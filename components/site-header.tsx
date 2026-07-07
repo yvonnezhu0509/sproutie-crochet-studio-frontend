@@ -9,49 +9,37 @@ import { navLinks } from '@/lib/content'
 import { Logo } from '@/components/logo'
 import { AnnouncementBar } from '@/components/announcement-bar'
 import { createClient } from '@/lib/supabase/client'
+import { getUserDisplayName } from '@/lib/user-profile'
+import { UserAvatar } from '@/components/user-avatar'
+import type { User } from '@supabase/supabase-js'
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
   const pathname = usePathname()
   const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
 
-    async function loadUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      setUserEmail(user?.email ?? null)
-      setAuthLoading(false)
-    }
-
-    loadUser()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user?.email ?? null)
+    // onAuthStateChange fires immediately with the current session on mount,
+    // so we use it as the single source of truth — no separate getUser() call.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
       setAuthLoading(false)
     })
 
-    return () => {
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    setUserEmail(null)
-    setOpen(false)
+    setUser(null)
+    router.push('/')
     router.refresh()
   }
-
-  const isAuthPage = pathname === '/sign-in' || pathname === '/sign-up'
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -68,7 +56,7 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop nav — minimal, no CTA buttons */}
         <nav className="hidden items-center gap-0 lg:flex" aria-label="Primary">
           {navLinks.map((link) => {
             const active =
@@ -88,7 +76,7 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Desktop right */}
+        {/* Desktop right — quiet links */}
         <div className="hidden items-center gap-5 lg:flex">
           <Link
             href="/design"
@@ -98,11 +86,12 @@ export function SiteHeader() {
           </Link>
 
           {authLoading ? (
-            <span className="text-sm text-muted-foreground">Checking…</span>
-          ) : userEmail ? (
+            <span className="h-4 w-16 animate-pulse rounded bg-muted" aria-hidden="true" />
+          ) : user ? (
             <div className="flex items-center gap-3">
-              <span className="max-w-[180px] truncate text-sm text-muted-foreground">
-                {userEmail}
+              <UserAvatar user={user} />
+              <span className="max-w-[140px] truncate text-sm text-muted-foreground" title={user.email ?? undefined}>
+                {getUserDisplayName(user)}
               </span>
               <button
                 type="button"
@@ -117,7 +106,7 @@ export function SiteHeader() {
               href="/sign-in"
               className={cn(
                 'text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-                isAuthPage && 'text-foreground',
+                (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
               )}
             >
               Sign In
@@ -138,9 +127,10 @@ export function SiteHeader() {
         </button>
       </div>
 
+      {/* Announcement bar — below nav chrome, above mobile panel */}
       <AnnouncementBar />
 
-      {/* Mobile nav */}
+      {/* Mobile nav — always in DOM, toggled with hidden to avoid SSR/client mismatch */}
       <div
         id="mobile-nav"
         className={cn(
@@ -166,33 +156,35 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
-
           <div className="my-1 h-px bg-border" />
-
           {authLoading ? (
-            <span className="py-3 text-base text-muted-foreground">
-              Checking…
-            </span>
-          ) : userEmail ? (
-            <div className="flex flex-col gap-2 py-3">
-              <span className="truncate text-base text-muted-foreground">
-                {userEmail}
-              </span>
+            <span className="my-3 h-4 w-24 animate-pulse rounded bg-muted" aria-hidden="true" />
+          ) : user ? (
+            <>
+              <div className="flex items-center gap-3 py-3">
+                <UserAvatar user={user} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {getUserDisplayName(user)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={handleSignOut}
-                className="text-left text-base text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => { setOpen(false); handleSignOut() }}
+                className="py-3 text-left text-base text-muted-foreground transition-colors hover:text-foreground"
               >
                 Sign Out
               </button>
-            </div>
+            </>
           ) : (
             <Link
               href="/sign-in"
               onClick={() => setOpen(false)}
               className={cn(
                 'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
-                isAuthPage && 'text-foreground',
+                (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
               )}
             >
               Sign In
