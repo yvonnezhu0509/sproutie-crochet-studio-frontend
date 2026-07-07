@@ -30,6 +30,7 @@ export function SignInForm() {
       },
     })
     // browser will redirect; no need to setGoogleLoading(false)
+    alert('111')
   }
 
   function validate() {
