@@ -26,11 +26,11 @@ export function SignInForm() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/client-callback111`,
+        redirectTo: `${window.location.origin}/auth/client-callback`,
       },
     })
     // browser will redirect; no need to setGoogleLoading(false)
-
+alert(`${window.location.origin}/auth/client-callback`)
   }
 
   function validate() {
