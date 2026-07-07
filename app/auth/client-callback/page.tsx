@@ -1,44 +1,67 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ClientCallbackPage() {
-  const router = useRouter()
-  const [message, setMessage] = useState('Signing you in...')
+  const [debug, setDebug] = useState('Starting client callback...')
 
   useEffect(() => {
     async function run() {
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const code = params.get('code')
 
-      if (!code) {
-        setMessage('Missing sign-in code.')
-        router.replace('/auth/error')
-        return
+        setDebug(`Callback page loaded. Has code: ${Boolean(code)}`)
+
+        if (!code) {
+          setDebug('ERROR: No code found in URL.')
+          return
+        }
+
+        const supabase = createClient()
+
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (error) {
+          setDebug(`EXCHANGE ERROR: ${error.message}`)
+          return
+        }
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (userError) {
+          setDebug(`SESSION CREATED BUT GET USER ERROR: ${userError.message}`)
+          return
+        }
+
+        setDebug(
+          `SUCCESS. Session exchanged. User email: ${
+            user?.email ?? data.session?.user?.email ?? 'No email found'
+          }`
+        )
+      } catch (err) {
+        setDebug(
+          `CRASH: ${err instanceof Error ? err.message : String(err)}`
+        )
       }
-
-      const supabase = createClient()
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-      if (error) {
-        console.error('Client callback error:', error.message)
-        setMessage(error.message)
-        router.replace('/auth/error')
-        return
-      }
-
-      router.replace('/')
-      router.refresh()
     }
 
     run()
-  }, [router])
+  }, [])
 
   return (
-    <main className="flex min-h-[60vh] items-center justify-center px-6 text-center">
-      <p className="text-sm text-muted-foreground">{message}</p>
+    <main className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="font-heading text-2xl font-semibold">Auth Debug</h1>
+      <pre className="max-w-xl whitespace-pre-wrap rounded-lg border border-border bg-muted p-4 text-left text-sm">
+        {debug}
+      </pre>
+      <a href="/" className="text-sm underline underline-offset-4">
+        Back to home
+      </a>
     </main>
   )
 }
