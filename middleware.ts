@@ -15,6 +15,6 @@ export const config = {
      *   router throws "dispatched before initialization" during hot reload)
      * - favicon.ico and common static asset extensions
      */
-    '/((?!_next/static|_next/image|_next/webpack-hmr|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!auth/callback|auth/error|_next/static|_next/image|_next/webpack-hmr|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
