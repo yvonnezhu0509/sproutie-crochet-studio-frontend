@@ -55,7 +55,6 @@ export default function ClientCallbackPage() {
 
   return (
     <main className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
-      <h1>hdskjhsdkhskjdhkjasdhkjahdkjahckjxzbckmbxzny32r873r89fjkhdsjkchkjshfkshfdkshfkdsjhfdksjhf</h1>
       <h1 className="font-heading text-2xl font-semibold">Auth Debug</h1>
       <pre className="max-w-xl whitespace-pre-wrap rounded-lg border border-border bg-muted p-4 text-left text-sm">
         {debug}
