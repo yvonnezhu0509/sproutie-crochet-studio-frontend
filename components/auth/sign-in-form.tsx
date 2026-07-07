@@ -30,7 +30,7 @@ export function SignInForm() {
       },
     })
     // browser will redirect; no need to setGoogleLoading(false)
-    alert('111')
+    await alert(supabase.auth.getUser())
   }
 
   function validate() {
