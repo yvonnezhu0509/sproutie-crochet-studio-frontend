@@ -14,11 +14,11 @@ export function Hero() {
           </p>
 
           <h1 className="text-balance font-heading text-[clamp(2.6rem,6vw,5.25rem)] font-semibold leading-[1.0] tracking-tight text-foreground">
-            Every bag starts<br className="hidden sm:block" /> with an idea.
+            Every bag starts<br className="hidden sm:block" /> with an 11111 idea.
           </h1>
 
           <p className="max-w-sm text-pretty text-lg leading-relaxed text-muted-foreground">
-            Original crochet bag kits 11111 from the studio — plus a guided design
+            Original crochet bag kits from the studio — plus a guided design
             tool to turn your own inspiration into a bag you can make.
           </p>
 
