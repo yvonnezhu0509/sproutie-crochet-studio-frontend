@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { ChevronDown, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { navLinks } from '@/lib/content'
 import { Logo } from '@/components/logo'
@@ -18,6 +18,7 @@ export function SiteHeader() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
@@ -28,8 +29,17 @@ export function SiteHeader() {
         setMenuOpen(false)
       }
     }
-    if (menuOpen) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
   }, [menuOpen])
 
   useEffect(() => {
@@ -46,9 +56,11 @@ export function SiteHeader() {
   }, [])
 
   async function handleSignOut() {
+    setSigningOut(true)
     const supabase = createClient()
     await supabase.auth.signOut()
     setUser(null)
+    setSigningOut(false)
     router.push('/')
     router.refresh()
   }
@@ -60,7 +72,7 @@ export function SiteHeader() {
         <Link
           href="/"
           className="flex items-center gap-2 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-          aria-label="Sproutie Crochet Studio home"
+          aria-label="Sproutie House home"
         >
           <Logo className="h-6 w-auto text-sprout" />
           <span className="font-heading text-lg font-semibold tracking-tight text-foreground">
@@ -100,36 +112,50 @@ export function SiteHeader() {
           {authLoading ? (
             <span className="h-4 w-16 animate-pulse rounded bg-muted" aria-hidden="true" />
           ) : user ? (
-            <div className="relative" ref={menuRef}>
+            <div className="relative flex items-center gap-1" ref={menuRef}>
+              {/* Avatar — direct link to /account */}
+              <Link
+                href="/account"
+                aria-label="Go to account overview"
+                className="rounded-full cursor-pointer ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                <UserAvatar user={user} />
+              </Link>
+
+              {/* Chevron — toggles dropdown only */}
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-label="Open account menu"
                 aria-expanded={menuOpen}
                 aria-haspopup="true"
-                className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="flex items-center justify-center rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring cursor-pointer"
               >
-                <UserAvatar user={user} />
+                <ChevronDown
+                  className={cn('size-3.5 transition-transform duration-150', menuOpen && 'rotate-180')}
+                  aria-hidden="true"
+                />
               </button>
 
+              {/* Dropdown */}
               {menuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full mt-2 w-44 origin-top-right rounded-xl border border-border bg-background py-1 shadow-lg"
+                  className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-xl border border-border bg-background py-1 shadow-lg"
                 >
                   <Link
                     href="/account"
                     role="menuitem"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted cursor-pointer"
                   >
-                    My Account
+                    Overview
                   </Link>
                   <Link
                     href="/account/rewards"
                     role="menuitem"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted cursor-pointer"
                   >
                     Rewards &amp; Offers
                   </Link>
@@ -137,7 +163,7 @@ export function SiteHeader() {
                     href="/account/settings"
                     role="menuitem"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted cursor-pointer"
                   >
                     Settings
                   </Link>
@@ -145,10 +171,11 @@ export function SiteHeader() {
                   <button
                     type="button"
                     role="menuitem"
+                    disabled={signingOut}
                     onClick={() => { setMenuOpen(false); handleSignOut() }}
-                    className="block w-full px-4 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="block w-full px-4 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted cursor-pointer disabled:cursor-wait"
                   >
-                    Sign Out
+                    {signingOut ? 'Signing out…' : 'Sign Out'}
                   </button>
                 </div>
               )}
@@ -254,10 +281,11 @@ export function SiteHeader() {
               </Link>
               <button
                 type="button"
+                disabled={signingOut}
                 onClick={() => { setOpen(false); handleSignOut() }}
-                className="py-3 text-left text-base text-muted-foreground transition-colors hover:text-foreground"
+                className="py-3 text-left text-base text-foreground transition-colors hover:text-foreground cursor-pointer disabled:cursor-wait"
               >
-                Sign Out
+                {signingOut ? 'Signing out…' : 'Sign Out'}
               </button>
             </>
           ) : (

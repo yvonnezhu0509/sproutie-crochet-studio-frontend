@@ -10,7 +10,7 @@ export function Hero() {
         {/* Left — editorial text block */}
         <div className="flex flex-col gap-8 lg:pb-12">
           <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            Sproutie Crochet Studio — Est. 2024
+            Sproutie House — Est. 2024
           </p>
 
           <h1 className="text-balance font-heading text-[clamp(2.6rem,6vw,5.25rem)] font-semibold leading-[1.0] tracking-tight text-foreground">

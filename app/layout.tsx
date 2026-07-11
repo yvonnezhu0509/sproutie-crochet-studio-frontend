@@ -18,11 +18,11 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Sproutie Crochet Studio — Original Crochet Bag Kits & AI Design Studio',
-    template: '%s · Sproutie Crochet Studio',
+    default: 'Sproutie House | Crochet Bag Kits & Patterns',
+    template: '%s · Sproutie House',
   },
   description:
-    'Explore original crochet bag kits or use our guided AI Bag Design Studio to create a bag inspired by your own colors, needs, and ideas. An early-stage studio prototype.',
+    'Playful crochet bag kits and patterns designed to be enjoyable to make and easy to personalize.',
   generator: 'v0.app',
 }
 
