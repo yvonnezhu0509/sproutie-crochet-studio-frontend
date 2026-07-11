@@ -27,9 +27,7 @@ export default function SignInPage() {
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           Sign in to manage your kit requests, saved designs, and community projects.
         </p>
-        <p className="mt-1 text-xs text-muted-foreground/60">
-          Prototype — no real authentication is active.
-        </p>
+
       </div>
 
       <SignInForm />

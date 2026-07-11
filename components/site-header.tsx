@@ -89,10 +89,23 @@ export function SiteHeader() {
             <span className="h-4 w-16 animate-pulse rounded bg-muted" aria-hidden="true" />
           ) : user ? (
             <div className="flex items-center gap-3">
-              <UserAvatar user={user} />
-              <span className="max-w-[140px] truncate text-sm text-muted-foreground" title={user.email ?? undefined}>
+              <Link
+                href="/account"
+                className="flex items-center gap-2 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                aria-label="My account"
+              >
+                <UserAvatar user={user} />
+              </Link>
+              <Link
+                href="/account"
+                className={cn(
+                  'max-w-[120px] truncate text-sm text-muted-foreground transition-colors hover:text-foreground',
+                  pathname.startsWith('/account') && 'text-foreground',
+                )}
+                title={user.email ?? undefined}
+              >
                 {getUserDisplayName(user)}
-              </span>
+              </Link>
               <button
                 type="button"
                 onClick={handleSignOut}
@@ -102,15 +115,26 @@ export function SiteHeader() {
               </button>
             </div>
           ) : (
-            <Link
-              href="/sign-in"
-              className={cn(
-                'text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-                (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
-              )}
-            >
-              Sign In
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/sign-in"
+                className={cn(
+                  'text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+                  pathname === '/sign-in' && 'text-foreground',
+                )}
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/sign-up"
+                className={cn(
+                  'rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted',
+                  pathname === '/sign-up' && 'bg-muted',
+                )}
+              >
+                Sign Up
+              </Link>
+            </div>
           )}
         </div>
 
@@ -161,7 +185,11 @@ export function SiteHeader() {
             <span className="my-3 h-4 w-24 animate-pulse rounded bg-muted" aria-hidden="true" />
           ) : user ? (
             <>
-              <div className="flex items-center gap-3 py-3">
+              <Link
+                href="/account"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 py-3"
+              >
                 <UserAvatar user={user} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">
@@ -169,7 +197,17 @@ export function SiteHeader() {
                   </p>
                   <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
-              </div>
+              </Link>
+              <Link
+                href="/account"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                  pathname.startsWith('/account') && 'text-foreground',
+                )}
+              >
+                Account
+              </Link>
               <button
                 type="button"
                 onClick={() => { setOpen(false); handleSignOut() }}
@@ -179,16 +217,28 @@ export function SiteHeader() {
               </button>
             </>
           ) : (
-            <Link
-              href="/sign-in"
-              onClick={() => setOpen(false)}
-              className={cn(
-                'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
-                (pathname === '/sign-in' || pathname === '/sign-up') && 'text-foreground',
-              )}
-            >
-              Sign In
-            </Link>
+            <>
+              <Link
+                href="/sign-in"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                  pathname === '/sign-in' && 'text-foreground',
+                )}
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/sign-up"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                  pathname === '/sign-up' && 'text-foreground',
+                )}
+              >
+                Sign Up
+              </Link>
+            </>
           )}
         </nav>
       </div>

@@ -24,7 +24,7 @@ export function AuthCodeHandler() {
         return
       }
 
-      router.replace('/')
+      router.replace('/account')
       router.refresh()
     }
 

@@ -2,42 +2,43 @@
 
 import { useId, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 
-type FormState = 'idle' | 'submitting' | 'success' | 'error'
+type FormState = 'idle' | 'submitting' | 'error'
 
 export function SignInForm() {
   const uid = useId()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [state, setState] = useState<FormState>('idle')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const [googleLoading, setGoogleLoading] = useState(false)
 
   async function handleGoogleSignIn() {
-  setGoogleLoading(true)
-
-  const supabase = createClient()
-
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo:
-        'https://sproutie-crochet-studio-frontend.vercel.app/auth/callback',
-    },
-  })
-
-  if (error) {
-    alert(`Google sign-in error: ${error.message}`)
-    setGoogleLoading(false)
+    setGoogleLoading(true)
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo:
+          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+          `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) {
+      setServerError(`Google sign-in error: ${error.message}`)
+      setGoogleLoading(false)
+    }
   }
-}
 
   function validate() {
     const e: Record<string, string> = {}
@@ -48,37 +49,30 @@ export function SignInForm() {
     return e
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
+
     setState('submitting')
-    // Mock async sign-in — no data is stored or transmitted.
-    setTimeout(() => setState('success'), 1000)
+    setServerError(null)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
+      setState('error')
+      setServerError(error.message)
+      return
+    }
+
+    router.push('/account')
+    router.refresh()
   }
 
   const inputBase =
     'mt-1.5 block w-full rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30'
-
-  if (state === 'success') {
-    return (
-      <div className="flex flex-col gap-4 text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-secondary">
-          <svg viewBox="0 0 24 24" className="size-6 text-primary" fill="none" aria-hidden="true">
-            <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <p className="font-heading text-xl font-semibold">Signed in</p>
-        <p className="text-sm text-muted-foreground">
-          This is a prototype — no real session has been created.
-        </p>
-        <Link href="/" className={cn(buttonVariants(), 'mt-2')}>
-          Return to home
-        </Link>
-      </div>
-    )
-  }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
@@ -189,6 +183,13 @@ export function SignInForm() {
         />
         <span className="text-muted-foreground">Remember me</span>
       </label>
+
+      {/* Server error */}
+      {serverError && (
+        <p role="alert" className="rounded-lg bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+          {serverError}
+        </p>
+      )}
 
       {/* Submit */}
       <button

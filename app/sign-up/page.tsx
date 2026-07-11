@@ -28,9 +28,7 @@ export default function SignUpPage() {
           An account will let you save designs from the Design Studio, share
           projects in the community, and manage kit requests when they open.
         </p>
-        <p className="mt-1 text-xs text-muted-foreground/60">
-          Prototype — no real account data is stored or transmitted.
-        </p>
+
       </div>
 
       <SignUpForm />

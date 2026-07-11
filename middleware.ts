@@ -1,24 +1,50 @@
 import { updateSession } from '@/lib/supabase/proxy'
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl
-  const code = url.searchParams.get('code')
 
+  // Forward bare ?code= on homepage to the callback route
+  const code = url.searchParams.get('code')
   if (url.pathname === '/' && code) {
     const callbackUrl = url.clone()
     callbackUrl.pathname = '/auth/callback'
     callbackUrl.searchParams.set('code', code)
-
     const next = url.searchParams.get('next')
-    if (next) {
-      callbackUrl.searchParams.set('next', next)
-    }
-
+    if (next) callbackUrl.searchParams.set('next', next)
     return NextResponse.redirect(callbackUrl)
   }
 
-  return await updateSession(request)
+  // Refresh the session cookie (required by @supabase/ssr)
+  const response = await updateSession(request)
+
+  // Protect /account — check session using the refreshed cookies
+  if (url.pathname.startsWith('/account')) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll() {
+            // Cookies are already handled by updateSession above
+          },
+        },
+      },
+    )
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      const loginUrl = url.clone()
+      loginUrl.pathname = '/sign-in'
+      loginUrl.searchParams.set('next', url.pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
+  return response
 }
 
 export const config = {

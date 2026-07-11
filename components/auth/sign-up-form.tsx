@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
 
-type FormState = 'idle' | 'submitting' | 'success'
+type FormState = 'idle' | 'submitting' | 'success' | 'error'
 
 interface FieldErrors {
   firstName?: string
@@ -21,6 +22,7 @@ export function SignUpForm() {
   const uid = useId()
   const [state, setState] = useState<FormState>('idle')
   const [errors, setErrors] = useState<FieldErrors>({})
+  const [serverError, setServerError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [values, setValues] = useState({
@@ -57,14 +59,36 @@ export function SignUpForm() {
     return e
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
+
     setState('submitting')
-    // Mock async sign-up — no data is stored or transmitted.
-    setTimeout(() => setState('success'), 1000)
+    setServerError(null)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+      options: {
+        emailRedirectTo:
+          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+          `${window.location.origin}/auth/callback`,
+        data: {
+          full_name: `${values.firstName} ${values.lastName}`.trim(),
+        },
+      },
+    })
+
+    if (error) {
+      setState('error')
+      setServerError(error.message)
+      return
+    }
+
+    setState('success')
   }
 
   const inputBase =
@@ -81,9 +105,9 @@ export function SignUpForm() {
             <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <p className="font-heading text-xl font-semibold">Account created</p>
+        <p className="font-heading text-xl font-semibold">Check your email</p>
         <p className="text-sm text-muted-foreground">
-          Welcome, {values.firstName}. This is a prototype — no real account has been stored.
+          Welcome, {values.firstName}! We sent a confirmation link to <strong>{values.email}</strong>. Click it to activate your account.
         </p>
         <Link href="/" className={cn(buttonVariants(), 'mt-2')}>
           Return to home
@@ -245,6 +269,13 @@ export function SignUpForm() {
           <p id={`${uid}-terms-err`} className="mt-1 text-xs text-destructive">{errors.terms}</p>
         )}
       </div>
+
+      {/* Server error */}
+      {serverError && (
+        <p role="alert" className="rounded-lg bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+          {serverError}
+        </p>
+      )}
 
       {/* Submit */}
       <button
