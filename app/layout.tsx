@@ -7,6 +7,8 @@ import { SiteFooter } from '@/components/site-footer'
 import { Toaster } from '@/components/ui/sonner'
 import { AskSproutie } from '@/components/ask-sproutie'
 import { AuthCodeHandler } from '@/components/auth/auth-code-handler'
+import { CartProvider } from '@/lib/cart'
+import { CartDrawer } from '@/components/cart/cart-drawer'
 import './globals.css'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -42,18 +44,21 @@ export default function RootLayout({
       className={`light ${geistSans.variable} ${fraunces.variable} bg-background`}
     >
       <body className="font-sans antialiased">
-        <Suspense fallback={null}>
-          <AuthCodeHandler />
-        </Suspense>
+        <CartProvider>
+          <Suspense fallback={null}>
+            <AuthCodeHandler />
+          </Suspense>
 
-        <div className="flex min-h-dvh flex-col">
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </div>
+          <div className="flex min-h-dvh flex-col">
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </div>
 
-        <Toaster />
-        <AskSproutie />
+          <CartDrawer />
+          <Toaster />
+          <AskSproutie />
+        </CartProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

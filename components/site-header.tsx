@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ChevronDown, Menu, X } from 'lucide-react'
+import { ChevronDown, Menu, ShoppingBag, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { navLinks } from '@/lib/content'
 import { Logo } from '@/components/logo'
@@ -11,6 +11,7 @@ import { AnnouncementBar } from '@/components/announcement-bar'
 import { createClient } from '@/lib/supabase/client'
 import { getUserDisplayName } from '@/lib/user-profile'
 import { UserAvatar } from '@/components/user-avatar'
+import { useCart } from '@/lib/cart'
 import type { User } from '@supabase/supabase-js'
 
 export function SiteHeader() {
@@ -22,6 +23,7 @@ export function SiteHeader() {
   const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
+  const { itemCount, openDrawer } = useCart()
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -100,8 +102,9 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Desktop right — auth control only */}
-        <div className="hidden items-center gap-5 lg:flex">
+        {/* Desktop right — cart + auth */}
+        <div className="hidden items-center gap-4 lg:flex">
+          <CartIconButton itemCount={itemCount} onClick={openDrawer} />
           {authLoading ? (
             <span className="h-4 w-16 animate-pulse rounded bg-muted" aria-hidden="true" />
           ) : user ? (
@@ -186,17 +189,20 @@ export function SiteHeader() {
           )}
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="inline-flex size-9 items-center justify-center rounded-md text-foreground lg:hidden"
-          aria-expanded={open}
-          aria-controls="mobile-nav"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+        {/* Mobile right — cart + hamburger */}
+        <div className="flex items-center gap-1 lg:hidden">
+          <CartIconButton itemCount={itemCount} onClick={openDrawer} />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex size-9 items-center justify-center rounded-md text-foreground"
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+          >
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Announcement bar — below nav chrome, above mobile panel */}
@@ -296,5 +302,32 @@ export function SiteHeader() {
         </nav>
       </div>
     </header>
+  )
+}
+
+function CartIconButton({
+  itemCount,
+  onClick,
+}: {
+  itemCount: number
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={itemCount > 0 ? `Open cart, ${itemCount} item${itemCount !== 1 ? 's' : ''}` : 'Open cart'}
+      className="relative flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
+      <ShoppingBag className="size-5" />
+      {itemCount > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
+        >
+          {itemCount > 99 ? '99+' : itemCount}
+        </span>
+      )}
+    </button>
   )
 }
