@@ -5,7 +5,7 @@ import { SignUpForm } from '@/components/auth/sign-up-form'
 
 export const metadata: Metadata = {
   title: 'Create Account',
-  description: 'Create a free Sproutie Crochet Studio account.',
+  description: 'Create a free Sproutie House account.',
 }
 
 export default function SignUpPage() {
@@ -22,7 +22,7 @@ export default function SignUpPage() {
           <span className="font-heading font-semibold tracking-tight">Sproutie</span>
         </Link>
         <h1 className="font-heading text-[clamp(1.75rem,4vw,2.5rem)] font-semibold leading-tight tracking-tight">
-          Create your Sproutie account
+          Create your Sproutie House account
         </h1>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           An account will let you save designs from the Design Studio, share

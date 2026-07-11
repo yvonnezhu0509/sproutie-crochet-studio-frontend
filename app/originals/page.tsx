@@ -7,7 +7,7 @@ import { originalKits } from '@/lib/products'
 export const metadata: Metadata = {
   title: 'Studio Originals',
   description:
-    'Original crochet bag kits designed, tested, and assembled by Sproutie Crochet Studio. Each kit includes yarn, hardware, handles, lining, and a printed pattern.',
+    'Original crochet bag kits designed, tested, and assembled by Sproutie House. Each kit includes yarn, hardware, handles, lining, and a printed pattern.',
 }
 
 export default function OriginalsPage() {
