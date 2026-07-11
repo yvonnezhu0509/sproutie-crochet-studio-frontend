@@ -21,16 +21,23 @@ export function SignInForm() {
   const [googleLoading, setGoogleLoading] = useState(false)
 
   async function handleGoogleSignIn() {
-    setGoogleLoading(true)
-    const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/client-callback`,
-      },
-    })
-    // browser will redirect; no need to setGoogleLoading(false)
+  setGoogleLoading(true)
+
+  const supabase = createClient()
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo:
+        'https://sproutie-crochet-studio-frontend.vercel.app/auth/callback',
+    },
+  })
+
+  if (error) {
+    alert(`Google sign-in error: ${error.message}`)
+    setGoogleLoading(false)
   }
+}
 
   function validate() {
     const e: Record<string, string> = {}
