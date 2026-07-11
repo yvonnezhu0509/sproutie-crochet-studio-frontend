@@ -1,43 +1,32 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const next = requestUrl.searchParams.get('next') ?? '/'
 
   if (!code) {
-    return NextResponse.redirect(`${requestUrl.origin}/auth/error`)
+    return NextResponse.json(
+      { error: 'Missing OAuth code in callback URL.' },
+      { status: 400 },
+    )
   }
 
-  const redirectUrl = requestUrl.clone()
-  redirectUrl.pathname = next
-  redirectUrl.search = ''
-
-  const response = NextResponse.redirect(redirectUrl)
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    },
-  )
+  const supabase = await createClient()
 
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
-    return NextResponse.redirect(`${requestUrl.origin}/auth/error`)
+    return NextResponse.json(
+      {
+        error: error.message,
+        code: error.code,
+      },
+      { status: 400 },
+    )
   }
 
-  return response
+  return NextResponse.redirect(
+    new URL('/', requestUrl.origin),
+  )
 }
