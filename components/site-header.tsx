@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
@@ -17,8 +17,20 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
 
   useEffect(() => {
     const supabase = createClient()
@@ -88,18 +100,58 @@ export function SiteHeader() {
           {authLoading ? (
             <span className="h-4 w-16 animate-pulse rounded bg-muted" aria-hidden="true" />
           ) : user ? (
-            <div className="flex items-center gap-3">
-              <UserAvatar user={user} />
-              <span className="max-w-[140px] truncate text-sm text-muted-foreground" title={user.email ?? undefined}>
-                {getUserDisplayName(user)}
-              </span>
+            <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                onClick={handleSignOut}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Open account menu"
+                aria-expanded={menuOpen}
+                aria-haspopup="true"
+                className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
-                Sign Out
+                <UserAvatar user={user} />
               </button>
+
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-2 w-44 origin-top-right rounded-xl border border-border bg-background py-1 shadow-lg"
+                >
+                  <Link
+                    href="/account"
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    My Account
+                  </Link>
+                  <Link
+                    href="/account/rewards"
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    Rewards &amp; Offers
+                  </Link>
+                  <Link
+                    href="/account/settings"
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    Settings
+                  </Link>
+                  <div className="my-1 h-px bg-border" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); handleSignOut() }}
+                    className="block w-full px-4 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <Link
@@ -170,6 +222,36 @@ export function SiteHeader() {
                   <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </div>
+              <Link
+                href="/account"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                  pathname === '/account' && 'text-foreground',
+                )}
+              >
+                My Account
+              </Link>
+              <Link
+                href="/account/rewards"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                  pathname === '/account/rewards' && 'text-foreground',
+                )}
+              >
+                Rewards &amp; Offers
+              </Link>
+              <Link
+                href="/account/settings"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                  pathname === '/account/settings' && 'text-foreground',
+                )}
+              >
+                Settings
+              </Link>
               <button
                 type="button"
                 onClick={() => { setOpen(false); handleSignOut() }}
