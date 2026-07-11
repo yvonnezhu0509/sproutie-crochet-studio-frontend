@@ -91,7 +91,7 @@ export function SiteHeader() {
                 href={link.href}
                 className={cn(
                   'px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground',
-                  active && 'text-foreground',
+                  active && 'text-primary font-medium',
                 )}
               >
                 {link.label}
@@ -100,15 +100,8 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Desktop right — quiet links */}
+        {/* Desktop right — auth control only */}
         <div className="hidden items-center gap-5 lg:flex">
-          <Link
-            href="/design"
-            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Design Studio
-          </Link>
-
           {authLoading ? (
             <span className="h-4 w-16 animate-pulse rounded bg-muted" aria-hidden="true" />
           ) : user ? (
