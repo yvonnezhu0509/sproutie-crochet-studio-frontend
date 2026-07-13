@@ -59,6 +59,22 @@ export interface DbInventory {
   track_inventory: boolean
 }
 
+export interface DbKitItem {
+  id: string
+  product_id: string
+  variant_id: string | null
+  category: string
+  item_name: string
+  quantity: number
+  unit: string
+  specification: string | null
+  is_optional: boolean
+  customer_visible: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 // ---------------------------------------------------------------------------
 // Enriched catalog type (used by the frontend)
 // ---------------------------------------------------------------------------
@@ -293,6 +309,38 @@ export async function getFeaturedKits(): Promise<CatalogKit[]> {
       (inventory ?? []) as DbInventory[],
     ),
   )
+}
+
+/** Fetch kit items for a product (public: customer_visible only via RLS). */
+export async function getKitItems(productId: string): Promise<DbKitItem[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('product_kit_items')
+    .select('*')
+    .eq('product_id', productId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.error('[catalog] getKitItems error:', error.message)
+    return []
+  }
+  return (data ?? []) as DbKitItem[]
+}
+
+/** Fetch ALL kit items for a product regardless of customer_visible (admin use). */
+export async function getKitItemsAdmin(productId: string): Promise<DbKitItem[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('product_kit_items')
+    .select('*')
+    .eq('product_id', productId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.error('[catalog] getKitItemsAdmin error:', error.message)
+    return []
+  }
+  return (data ?? []) as DbKitItem[]
 }
 
 /** Fetch ALL products regardless of status (admin use). */
