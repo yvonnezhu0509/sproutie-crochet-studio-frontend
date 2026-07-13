@@ -9,10 +9,11 @@ const footerNav = [
       { href: '/design', label: 'Design Studio' },
       { href: '/originals', label: 'Studio Originals' },
       { href: '/how-it-works', label: 'How It Works' },
+      { href: '/community', label: 'Community' },
     ],
   },
   {
-    heading: 'Studio',
+    heading: 'Information',
     links: [
       { href: '/about', label: 'About' },
       { href: '/faq', label: 'FAQ' },
