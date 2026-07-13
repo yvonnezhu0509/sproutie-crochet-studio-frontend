@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Ask Sproutie is temporarily unavailable. Please try again later.",
-          debug: "Missing OPENROUTER_API_KEY",
         },
         { status: 500 }
       )
@@ -54,7 +53,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Invalid JSON body.",
-          debug: "Request body is missing or invalid JSON.",
         },
         { status: 400 }
       )
@@ -88,7 +86,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Message is required.",
-          debug: "No message or valid messages array was provided.",
         },
         { status: 400 }
       )
@@ -128,36 +125,22 @@ export async function POST(req: NextRequest) {
     try {
       data = rawUpstreamText ? JSON.parse(rawUpstreamText) : null
     } catch {
-      console.error("[support-chat] OpenRouter returned non-JSON:", rawUpstreamText)
+      console.error("[support-chat] OpenRouter returned non-JSON response:", upstream.status)
 
       return NextResponse.json(
         {
           error: "Ask Sproutie is temporarily unavailable. Please try again later.",
-          debug: {
-            reason: "OpenRouter returned non-JSON response.",
-            status: upstream.status,
-            raw: rawUpstreamText,
-          },
         },
         { status: 500 }
       )
     }
 
     if (!upstream.ok) {
-      console.error(
-        "[support-chat] OpenRouter error:",
-        upstream.status,
-        JSON.stringify(data)
-      )
+      console.error("[support-chat] OpenRouter request failed:", upstream.status)
 
       return NextResponse.json(
         {
           error: "Ask Sproutie is temporarily unavailable. Please try again later.",
-          debug: {
-            reason: "OpenRouter request failed.",
-            status: upstream.status,
-            upstream: data,
-          },
         },
         { status: upstream.status }
       )
@@ -176,21 +159,14 @@ export async function POST(req: NextRequest) {
       ],
     })
   } catch (error) {
-    console.error("[support-chat] route error:", error)
+    console.error(
+      "[support-chat] route error:",
+      error instanceof Error ? error.message : String(error)
+    )
 
     return NextResponse.json(
       {
         error: "Ask Sproutie is temporarily unavailable. Please try again later.",
-        debug:
-          error instanceof Error
-            ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
-            : {
-                message: String(error),
-              },
       },
       { status: 500 }
     )

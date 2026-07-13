@@ -19,8 +19,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   if (authCode) {
     const target = nextPath
-      ? `/auth/client-callback?code=${encodeURIComponent(authCode)}&next=${encodeURIComponent(nextPath)}`
-      : `/auth/client-callback?code=${encodeURIComponent(authCode)}`
+      ? `/auth/callback?code=${encodeURIComponent(authCode)}&next=${encodeURIComponent(nextPath)}`
+      : `/auth/callback?code=${encodeURIComponent(authCode)}`
 
     redirect(target)
   }
