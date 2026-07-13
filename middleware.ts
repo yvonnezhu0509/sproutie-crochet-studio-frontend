@@ -48,10 +48,10 @@ export async function middleware(request: NextRequest) {
     if (url.pathname.startsWith('/admin')) {
       const isAdmin = user.user_metadata?.is_admin === true
       if (!isAdmin) {
-        const homeUrl = url.clone()
-        homeUrl.pathname = '/'
-        homeUrl.search = ''
-        return NextResponse.redirect(homeUrl)
+        const unauthorizedUrl = url.clone()
+        unauthorizedUrl.pathname = '/unauthorized'
+        unauthorizedUrl.search = ''
+        return NextResponse.redirect(unauthorizedUrl)
       }
     }
   }
