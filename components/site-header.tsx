@@ -163,6 +163,27 @@ export function SiteHeader() {
                   >
                     Settings
                   </Link>
+                  {user?.user_metadata?.is_admin === true && (
+                    <>
+                      <div className="my-1 h-px bg-border" />
+                      <Link
+                        href="/admin"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted cursor-pointer"
+                      >
+                        Admin
+                      </Link>
+                      <Link
+                        href="/admin/products"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted cursor-pointer"
+                      >
+                        Manage Products
+                      </Link>
+                    </>
+                  )}
                   <div className="my-1 h-px bg-border" />
                   <button
                     type="button"
@@ -278,6 +299,31 @@ export function SiteHeader() {
               >
                 Settings
               </Link>
+              {user?.user_metadata?.is_admin === true && (
+                <>
+                  <div className="my-1 h-px bg-border" />
+                  <Link
+                    href="/admin"
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                      pathname === '/admin' && 'text-foreground',
+                    )}
+                  >
+                    Admin
+                  </Link>
+                  <Link
+                    href="/admin/products"
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      'py-3 text-base text-muted-foreground transition-colors hover:text-foreground',
+                      pathname.startsWith('/admin/products') && 'text-foreground',
+                    )}
+                  >
+                    Manage Products
+                  </Link>
+                </>
+              )}
               <button
                 type="button"
                 disabled={signingOut}
