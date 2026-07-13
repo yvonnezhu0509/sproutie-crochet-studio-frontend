@@ -5,10 +5,10 @@ import { ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { useCart } from '@/lib/cart'
-import type { OriginalKit } from '@/lib/products'
+import type { CatalogKit } from '@/lib/catalog'
 
 interface Props {
-  kit: OriginalKit
+  kit: CatalogKit
 }
 
 export function AddToCartSection({ kit }: Props) {
@@ -122,11 +122,13 @@ export function AddToCartSection({ kit }: Props) {
           {added ? 'Added to bag!' : 'Add to Bag'}
         </button>
 
-        {kit.availability !== 'Early Access' && (
+        {kit.status !== 'active' && (
           <p className="text-center text-xs text-muted-foreground">
-            {kit.availability === 'Waitlist'
-              ? 'Join the waitlist — we&apos;ll notify you when this kit ships.'
-              : 'This is a prototype kit — not yet available for purchase.'}
+            {kit.status === 'coming_soon'
+              ? 'Join the waitlist — we\u2019ll notify you when this kit ships.'
+              : kit.status === 'sold_out'
+              ? 'Currently sold out — check back soon.'
+              : 'This kit is not yet available for purchase.'}
           </p>
         )}
       </div>

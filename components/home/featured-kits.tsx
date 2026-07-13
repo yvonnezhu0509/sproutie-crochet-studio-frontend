@@ -2,10 +2,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { getFeaturedKits } from '@/lib/products'
+import { getFeaturedKits } from '@/lib/catalog'
 
-export function FeaturedKits() {
-  const kits = getFeaturedKits()
+export async function FeaturedKits() {
+  const kits = await getFeaturedKits()
 
   return (
     <section className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-12 lg:py-28">
@@ -47,7 +47,7 @@ export function FeaturedKits() {
               />
               <div className="absolute left-3 top-3">
                 <Badge className="border-transparent bg-background/85 text-xs text-foreground backdrop-blur">
-                  {kits[0].availability}
+                  {kits[0].availability || kits[0].status}
                 </Badge>
               </div>
             </div>
@@ -67,7 +67,7 @@ export function FeaturedKits() {
                 </span>
               </div>
               <p className="text-xs font-medium text-muted-foreground/70">
-                {kits[0].skillLevel} &middot; {kits[0].makingTime}
+                {kits[0].difficulty} &middot; {kits[0].makingTime}
               </p>
             </div>
           </Link>
@@ -95,7 +95,7 @@ export function FeaturedKits() {
               {/* Text — remaining 54% */}
               <div className="flex flex-col justify-center gap-2 px-5 py-4">
                 <Badge variant="secondary" className="w-fit text-xs">
-                  {kit.availability}
+                  {kit.availability || kit.status}
                 </Badge>
                 <h3 className="font-heading text-base font-semibold leading-snug">
                   {kit.name}

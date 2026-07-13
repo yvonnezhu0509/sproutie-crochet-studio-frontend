@@ -4,20 +4,27 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Check, Clock, Layers, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { getKitBySlug, originalKits } from '@/lib/products'
+import { getAllKits, getKitBySlug } from '@/lib/catalog'
 import { AddToCartSection } from '@/components/cart/add-to-cart-section'
 
 interface Props {
   params: Promise<{ slug: string }>
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  coming_soon: 'Waitlist',
+  active: 'Early Access',
+  sold_out: 'Sold Out',
+}
+
 export async function generateStaticParams() {
-  return originalKits.map((kit) => ({ slug: kit.slug }))
+  const kits = await getAllKits()
+  return kits.map((kit) => ({ slug: kit.slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const kit = getKitBySlug(slug)
+  const kit = await getKitBySlug(slug)
   if (!kit) return {}
   return {
     title: kit.name,
@@ -27,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function KitDetailPage({ params }: Props) {
   const { slug } = await params
-  const kit = getKitBySlug(slug)
+  const kit = await getKitBySlug(slug)
   if (!kit) notFound()
 
   return (
@@ -57,8 +64,8 @@ export default async function KitDetailPage({ params }: Props) {
               className="object-cover"
             />
             <div className="absolute left-4 top-4 flex gap-2">
-              <Badge variant="secondary">{kit.availability}</Badge>
-              <Badge variant="outline">{kit.skillLevel}</Badge>
+              <Badge variant="secondary">{STATUS_LABEL[kit.status] ?? kit.status}</Badge>
+              <Badge variant="outline">{kit.difficulty}</Badge>
             </div>
           </div>
 
@@ -91,7 +98,7 @@ export default async function KitDetailPage({ params }: Props) {
               {kit.name}
             </h1>
             <p className="mt-1 font-heading text-lg text-muted-foreground">{kit.tagline}</p>
-            <p className="mt-4 font-heading text-3xl font-semibold">${kit.price}</p>
+            <p className="mt-4 font-heading text-3xl font-semibold">${kit.price.toFixed(0)}</p>
           </div>
 
           {/* Quick stats */}
@@ -99,7 +106,7 @@ export default async function KitDetailPage({ params }: Props) {
             <div className="flex items-center gap-1.5">
               <Layers className="size-4 text-primary" aria-hidden="true" />
               <dt className="sr-only">Skill level</dt>
-              <dd>{kit.skillLevel}</dd>
+              <dd>{kit.difficulty}</dd>
             </div>
             <div className="flex items-center gap-1.5">
               <Clock className="size-4 text-primary" aria-hidden="true" />
@@ -121,103 +128,67 @@ export default async function KitDetailPage({ params }: Props) {
           <AddToCartSection kit={kit} />
 
           {/* Kit contents */}
-          <details className="group rounded-xl border border-border">
-            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
-              What&apos;s in the kit
-              <span className="text-muted-foreground transition-transform group-open:rotate-180">
-                ▾
-              </span>
-            </summary>
-            <ul className="flex flex-col gap-1.5 px-4 pb-4 pt-1">
-              {kit.kitContents.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </details>
+          {kit.kitContents.length > 0 && (
+            <details className="group rounded-xl border border-border">
+              <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
+                What&apos;s in the kit
+                <span className="text-muted-foreground transition-transform group-open:rotate-180">
+                  ▾
+                </span>
+              </summary>
+              <ul className="flex flex-col gap-1.5 px-4 pb-4 pt-1">
+                {kit.kitContents.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {/* Techniques */}
-          <details className="group rounded-xl border border-border">
-            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
-              Techniques used
-              <span className="text-muted-foreground transition-transform group-open:rotate-180">
-                ▾
-              </span>
-            </summary>
-            <ul className="flex flex-wrap gap-2 px-4 pb-4 pt-1">
-              {kit.techniques.map((t) => (
-                <li
-                  key={t}
-                  className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
-                >
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </details>
+          {kit.techniques.length > 0 && (
+            <details className="group rounded-xl border border-border">
+              <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
+                Techniques used
+                <span className="text-muted-foreground transition-transform group-open:rotate-180">
+                  ▾
+                </span>
+              </summary>
+              <ul className="flex flex-wrap gap-2 px-4 pb-4 pt-1">
+                {kit.techniques.map((t) => (
+                  <li
+                    key={t}
+                    className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                  >
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {/* Dimensions */}
-          <p className="text-xs text-muted-foreground/70">
-            Dimensions: {kit.dimensionsIn} &middot; {kit.dimensionsCm}
-          </p>
+          {kit.dimensionsIn && (
+            <p className="text-xs text-muted-foreground/70">
+              Dimensions: {kit.dimensionsIn} &middot; {kit.dimensionsCm}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Story section */}
-      <section aria-labelledby="story-heading" className="mt-16 max-w-2xl">
-        <h2 id="story-heading" className="font-heading text-2xl font-semibold">
-          Behind the design
-        </h2>
-        <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-          {kit.story}
-        </p>
-      </section>
-
-      {/* Reviews */}
-      {kit.reviews.length > 0 && (
-        <section aria-labelledby="reviews-heading" className="mt-16">
-          <h2 id="reviews-heading" className="font-heading text-2xl font-semibold">
-            Maker notes
+      {kit.description && (
+        <section aria-labelledby="story-heading" className="mt-16 max-w-2xl">
+          <h2 id="story-heading" className="font-heading text-2xl font-semibold">
+            Behind the design
           </h2>
-          <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {kit.reviews.map((review) => (
-              <li
-                key={review.name}
-                className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5"
-              >
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <svg
-                      key={i}
-                      viewBox="0 0 12 12"
-                      className={cn('size-3', i < review.rating ? 'text-primary' : 'text-border')}
-                      aria-hidden="true"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M6 .5l1.39 2.82L10.5 3.7l-2.25 2.2.53 3.1L6 7.5 3.22 9l.53-3.1L1.5 3.7l3.11-.38z"
-                      />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-sm text-pretty leading-relaxed text-muted-foreground">
-                  &ldquo;{review.body}&rdquo;
-                </p>
-                <div className="mt-auto text-xs text-muted-foreground/70">
-                  {review.name} &middot; {review.location}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+            {kit.description}
+          </p>
         </section>
       )}
     </div>
   )
-}
-
-// cn imported here since this is a server component
-function cn(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(' ')
 }
