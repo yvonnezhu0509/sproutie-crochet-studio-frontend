@@ -4,8 +4,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Check, Clock, Layers, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { getAllKits, getKitBySlug } from '@/lib/catalog'
+import { getKitBySlug } from '@/lib/catalog'
 import { AddToCartSection } from '@/components/cart/add-to-cart-section'
+
+export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -15,11 +17,6 @@ const STATUS_LABEL: Record<string, string> = {
   coming_soon: 'Waitlist',
   active: 'Early Access',
   sold_out: 'Sold Out',
-}
-
-export async function generateStaticParams() {
-  const kits = await getAllKits()
-  return kits.map((kit) => ({ slug: kit.slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
