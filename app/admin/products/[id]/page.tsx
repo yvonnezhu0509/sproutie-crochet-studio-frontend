@@ -3,16 +3,13 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getAllKitsAdmin, type DbVariant, type DbInventory } from '@/lib/catalog'
+import type { DbVariant, DbInventory } from '@/lib/catalog'
 import { ProductEditForm } from '@/components/admin/product-edit-form'
+
+export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ id: string }>
-}
-
-export async function generateStaticParams() {
-  const kits = await getAllKitsAdmin()
-  return kits.map((k) => ({ id: k.id }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
