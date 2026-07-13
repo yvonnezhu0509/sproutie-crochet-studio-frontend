@@ -1,0 +1,276 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
+import { updateProduct, updateProductStatus, updateInventory } from '@/app/admin/products/actions'
+import type { CatalogKit, ProductStatus } from '@/lib/catalog'
+
+const STATUSES: { value: ProductStatus; label: string }[] = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'coming_soon', label: 'Coming Soon' },
+  { value: 'active', label: 'Active' },
+  { value: 'sold_out', label: 'Sold Out' },
+  { value: 'archived', label: 'Archived' },
+]
+
+interface Props {
+  kit: CatalogKit
+}
+
+export function ProductEditForm({ kit }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  // Core fields
+  const [name, setName] = useState(kit.name)
+  const [slug, setSlug] = useState(kit.slug)
+  const [shortDesc, setShortDesc] = useState(kit.shortDescription)
+  const [description, setDescription] = useState(kit.description)
+  const [status, setStatus] = useState<ProductStatus>(kit.status)
+  const [priceCents, setPriceCents] = useState(kit.priceCents)
+  const [difficulty, setDifficulty] = useState(kit.difficulty)
+  const [makingTime, setMakingTime] = useState(kit.makingTime)
+  const [isFeatured, setIsFeatured] = useState(kit.isFeatured)
+
+  // Inventory (first variant only for now)
+  const firstVariant = kit.variants[0]
+  const firstInventory = firstVariant ? kit.inventory[firstVariant.id] : null
+  const [qty, setQty] = useState(firstInventory?.quantity_on_hand ?? 0)
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    startTransition(async () => {
+      const result = await updateProduct(kit.id, {
+        name,
+        slug,
+        short_description: shortDesc,
+        description,
+        status,
+        base_price_cents: priceCents,
+        difficulty,
+        estimated_making_time: makingTime,
+        is_featured: isFeatured,
+      })
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2500)
+        router.refresh()
+      }
+    })
+  }
+
+  function handleStatusChange(newStatus: ProductStatus) {
+    setStatus(newStatus)
+    startTransition(async () => {
+      await updateProductStatus(kit.id, newStatus, kit.slug)
+      router.refresh()
+    })
+  }
+
+  function handleInventorySave() {
+    if (!firstVariant) return
+    startTransition(async () => {
+      const result = await updateInventory(firstVariant.id, qty, kit.slug)
+      if (result.error) setError(result.error)
+      else router.refresh()
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+      {error && (
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* Status quick-switch */}
+      <section className="rounded-xl border border-border bg-card p-5">
+        <h2 className="mb-4 text-sm font-medium">Status</h2>
+        <div className="flex flex-wrap gap-2">
+          {STATUSES.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => handleStatusChange(s.value)}
+              disabled={isPending}
+              className={cn(
+                'rounded-full px-4 py-1.5 text-xs font-medium transition-colors border',
+                status === s.value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Core details */}
+      <section className="rounded-xl border border-border bg-card p-5">
+        <h2 className="mb-4 text-sm font-medium">Product details</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Name</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Slug</span>
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              required
+              className="rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Price (USD cents)</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={priceCents}
+              onChange={(e) => setPriceCents(Number(e.target.value))}
+              required
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+            <span className="text-xs text-muted-foreground/70">
+              = ${(priceCents / 100).toFixed(2)}
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Difficulty</span>
+            <input
+              type="text"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Making time</span>
+            <input
+              type="text"
+              value={makingTime}
+              onChange={(e) => setMakingTime(e.target.value)}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex items-center gap-2.5 pt-5">
+            <input
+              type="checkbox"
+              checked={isFeatured}
+              onChange={(e) => setIsFeatured(e.target.checked)}
+              className="size-4 rounded border-input"
+            />
+            <span className="text-sm">Featured on home page</span>
+          </label>
+        </div>
+
+        <label className="mt-4 flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">Short description</span>
+          <textarea
+            value={shortDesc}
+            onChange={(e) => setShortDesc(e.target.value)}
+            rows={2}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+          />
+        </label>
+
+        <label className="mt-4 flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">Description (story)</span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={5}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+          />
+        </label>
+      </section>
+
+      {/* Inventory */}
+      {firstVariant && (
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h2 className="mb-4 text-sm font-medium">Inventory</h2>
+          <div className="flex items-end gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                Quantity on hand ({firstVariant.variant_name})
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={qty}
+                onChange={(e) => setQty(Number(e.target.value))}
+                className="w-32 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleInventorySave}
+              disabled={isPending}
+              className={cn(buttonVariants({ variant: 'outline' }), 'h-10 text-xs')}
+            >
+              Save inventory
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Save */}
+      <div className="flex items-center gap-4">
+        <button
+          type="submit"
+          disabled={isPending}
+          className={cn(
+            buttonVariants(),
+            'h-10 min-w-[120px] text-sm transition-all',
+            saved && 'bg-sprout text-sprout-foreground',
+          )}
+        >
+          {saved ? (
+            <span className="flex items-center gap-1.5">
+              <Check className="size-4" />
+              Saved
+            </span>
+          ) : isPending ? (
+            'Saving…'
+          ) : (
+            'Save changes'
+          )}
+        </button>
+
+        <a
+          href={`/originals/${kit.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+        >
+          View on site
+        </a>
+      </div>
+    </form>
+  )
+}

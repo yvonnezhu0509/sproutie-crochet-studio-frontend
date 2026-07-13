@@ -19,8 +19,9 @@ export async function middleware(request: NextRequest) {
   // Refresh the session cookie (required by @supabase/ssr)
   const response = await updateSession(request)
 
-  // Protect /account — check session using the refreshed cookies
-  if (url.pathname.startsWith('/account')) {
+  // Protect /account and /admin — check session using the refreshed cookies
+  const isProtected = url.pathname.startsWith('/account') || url.pathname.startsWith('/admin')
+  if (isProtected) {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -41,6 +42,17 @@ export async function middleware(request: NextRequest) {
       loginUrl.pathname = '/sign-in'
       loginUrl.searchParams.set('next', url.pathname)
       return NextResponse.redirect(loginUrl)
+    }
+
+    // Extra check for /admin: require is_admin in user_metadata
+    if (url.pathname.startsWith('/admin')) {
+      const isAdmin = user.user_metadata?.is_admin === true
+      if (!isAdmin) {
+        const homeUrl = url.clone()
+        homeUrl.pathname = '/'
+        homeUrl.search = ''
+        return NextResponse.redirect(homeUrl)
+      }
     }
   }
 
