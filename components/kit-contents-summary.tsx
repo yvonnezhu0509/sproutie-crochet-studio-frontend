@@ -5,7 +5,7 @@ interface Props {
   items: DbKitItem[]
 }
 
-/** Groups customer-visible kit items by category and renders a collapsible summary. */
+/** Groups customer-visible kit items by category and renders an always-open list. */
 export function KitContentsSummary({ items }: Props) {
   const visible = items.filter((i) => i.customer_visible)
   if (visible.length === 0) return null
@@ -22,31 +22,28 @@ export function KitContentsSummary({ items }: Props) {
   }
 
   return (
-    <details className="group rounded-xl border border-border">
-      <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
-        {"What's in the kit"}
-        <span className="text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true">
-          &#9662;
-        </span>
-      </summary>
+    <div className="rounded-xl border border-border px-4 py-4">
+      <p className="mb-3 text-sm font-medium">{"What's Included"}</p>
 
-      <div className="flex flex-col gap-4 px-4 pb-4 pt-2">
+      <div className="flex flex-col gap-4">
         {categoryOrder.map((category) => (
           <div key={category}>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
-              {category}
-            </p>
+            {categoryOrder.length > 1 && (
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+                {category}
+              </p>
+            )}
             <ul className="flex flex-col gap-1.5">
               {groups[category].map((item) => (
-                <li key={item.id} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <li key={item.id} className="flex items-start gap-2 text-sm">
                   <Check
                     className="mt-0.5 size-3.5 shrink-0 text-primary"
                     aria-hidden="true"
                   />
-                  <span>
+                  <span className="text-muted-foreground">
                     <span className="text-foreground">{item.item_name}</span>
                     {(item.quantity !== 1 || item.unit) && (
-                      <span className="ml-1 text-muted-foreground">
+                      <span className="ml-1">
                         &times;&thinsp;{item.quantity}
                         {item.unit ? ` ${item.unit}` : ''}
                       </span>
@@ -68,6 +65,6 @@ export function KitContentsSummary({ items }: Props) {
           </div>
         ))}
       </div>
-    </details>
+    </div>
   )
 }
