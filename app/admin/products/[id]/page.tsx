@@ -4,7 +4,9 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import type { DbVariant, DbInventory } from '@/lib/catalog'
+import { getKitItemsAdmin } from '@/lib/catalog'
 import { ProductEditForm } from '@/components/admin/product-edit-form'
+import { KitContentsEditor } from '@/components/admin/kit-contents-editor'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,10 +39,10 @@ export default async function AdminProductDetailPage({ params }: Props) {
   if (!product) notFound()
 
   const variantIds = (variants ?? []).map((v) => v.id)
-  const { data: inventory } = await supabase
-    .from('inventory')
-    .select('*')
-    .in('variant_id', variantIds)
+  const [{ data: inventory }, kitItems] = await Promise.all([
+    supabase.from('inventory').select('*').in('variant_id', variantIds),
+    getKitItemsAdmin(id),
+  ])
 
   // Build a CatalogKit shape to pass into the form
   const sortedImages = [...(images ?? [])].sort((a, b) => a.sort_order - b.sort_order)
@@ -98,8 +100,14 @@ export default async function AdminProductDetailPage({ params }: Props) {
       <h1 className="font-heading text-2xl font-semibold">{product.name}</h1>
       <p className="mt-1 font-mono text-xs text-muted-foreground">{product.id}</p>
 
-      <div className="mt-8">
+      <div className="mt-8 flex flex-col gap-8">
         <ProductEditForm kit={kit} />
+        <KitContentsEditor
+          productId={product.id}
+          productSlug={product.slug}
+          initialItems={kitItems}
+          variants={(variants ?? []) as DbVariant[]}
+        />
       </div>
     </div>
   )

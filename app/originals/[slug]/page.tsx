@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Check, Clock, Layers, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { getKitBySlug } from '@/lib/catalog'
+import { getKitBySlug, getKitItems } from '@/lib/catalog'
 import { AddToCartSection } from '@/components/cart/add-to-cart-section'
+import { KitContentsSummary } from '@/components/kit-contents-summary'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,7 @@ export default async function KitDetailPage({ params }: Props) {
   const { slug } = await params
   const kit = await getKitBySlug(slug)
   if (!kit) notFound()
+  const kitItems = await getKitItems(kit.id)
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10 sm:px-8 lg:px-12 lg:py-16">
@@ -124,13 +126,15 @@ export default async function KitDetailPage({ params }: Props) {
           {/* Add to cart — client interactive section */}
           <AddToCartSection kit={kit} />
 
-          {/* Kit contents */}
-          {kit.kitContents.length > 0 && (
+          {/* Kit contents — DB-backed items take priority; fall back to legacy metadata */}
+          {kitItems.length > 0 ? (
+            <KitContentsSummary items={kitItems} />
+          ) : kit.kitContents.length > 0 ? (
             <details className="group rounded-xl border border-border">
               <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
                 What&apos;s in the kit
-                <span className="text-muted-foreground transition-transform group-open:rotate-180">
-                  ▾
+                <span className="text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true">
+                  &#9662;
                 </span>
               </summary>
               <ul className="flex flex-col gap-1.5 px-4 pb-4 pt-1">
@@ -142,7 +146,7 @@ export default async function KitDetailPage({ params }: Props) {
                 ))}
               </ul>
             </details>
-          )}
+          ) : null}
 
           {/* Techniques */}
           {kit.techniques.length > 0 && (
