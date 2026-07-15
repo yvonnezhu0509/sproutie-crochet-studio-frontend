@@ -10,18 +10,26 @@ import {
   Bookmark,
   Settings,
   LogOut,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
-const navItems = [
+type NavItem = {
+  href: string
+  label: string
+  icon: LucideIcon
+  exact?: boolean
+}
+
+const navItems: NavItem[] = [
   { href: '/account', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/account/my-designs', label: 'My Designs', icon: Palette },
   { href: '/account/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/account/rewards', label: 'Rewards & Offers', icon: Gift },
   { href: '/account/saved-kits', label: 'Saved Kits', icon: Bookmark },
   { href: '/account/settings', label: 'Settings', icon: Settings },
-] as const
+]
 
 export function AccountSidebar() {
   const pathname = usePathname()

@@ -11,12 +11,15 @@ export function AuthCodeHandler() {
   useEffect(() => {
     const code = searchParams.get('code')
 
-    if (!code) return
+    if (!code) {
+      router.replace('/auth/error')
+      return
+    }
 
     const supabase = createClient()
 
-    async function exchangeCode() {
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
+    async function exchangeCode(authCode: string) {
+      const { error } = await supabase.auth.exchangeCodeForSession(authCode)
 
       if (error) {
         console.error('Failed to exchange auth code:', error.message)
@@ -28,7 +31,7 @@ export function AuthCodeHandler() {
       router.refresh()
     }
 
-    exchangeCode()
+    exchangeCode(code)
   }, [router, searchParams])
 
   return null
