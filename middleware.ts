@@ -1,6 +1,7 @@
 import { updateSession } from '@/lib/supabase/proxy'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import type { Database } from '@/lib/supabase/database.types'
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl
@@ -22,7 +23,7 @@ export async function middleware(request: NextRequest) {
   // Protect /account and /admin — check session using the refreshed cookies
   const isProtected = url.pathname.startsWith('/account') || url.pathname.startsWith('/admin')
   if (isProtected) {
-    const supabase = createServerClient(
+    const supabase = createServerClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -44,9 +45,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // Extra check for /admin: require is_admin in user_metadata
+    // Extra check for /admin: require admin in server-controlled app_metadata
     if (url.pathname.startsWith('/admin')) {
-      const isAdmin = user.user_metadata?.is_admin === true
+      const appMetadata = user.app_metadata
+      const isAdmin =
+        appMetadata?.role === 'admin' ||
+        (Array.isArray(appMetadata?.roles) && appMetadata.roles.includes('admin')) ||
+        appMetadata?.is_admin === true
       if (!isAdmin) {
         const unauthorizedUrl = url.clone()
         unauthorizedUrl.pathname = '/unauthorized'

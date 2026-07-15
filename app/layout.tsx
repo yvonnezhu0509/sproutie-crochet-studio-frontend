@@ -1,12 +1,10 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Fraunces } from 'next/font/google'
-import { Suspense } from 'react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { Toaster } from '@/components/ui/sonner'
 import { AskSproutie } from '@/components/ask-sproutie'
-import { AuthCodeHandler } from '@/components/auth/auth-code-handler'
 import { CartProvider } from '@/lib/cart'
 import { CartDrawer } from '@/components/cart/cart-drawer'
 import './globals.css'
@@ -45,10 +43,6 @@ export default function RootLayout({
     >
       <body className="font-sans antialiased">
         <CartProvider>
-          <Suspense fallback={null}>
-            <AuthCodeHandler />
-          </Suspense>
-
           <div className="flex min-h-dvh flex-col">
             <SiteHeader />
             <main className="flex-1">{children}</main>
