@@ -38,6 +38,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Package className="size-4" aria-hidden="true" />
                 Products
               </Link>
+              <Link
+                href="/admin/materials"
+                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Package className="size-4" aria-hidden="true" />
+                Materials
+              </Link>
             </nav>
           </div>
           <Link
