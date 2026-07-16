@@ -68,6 +68,28 @@ export function ProductEditForm({ kit }: Props) {
   const [makingTime, setMakingTime] = useState(kit.makingTime)
   const [isFeatured, setIsFeatured] = useState(kit.isFeatured)
 
+  // Storefront metadata
+  const [tagline, setTagline] = useState(kit.tagline)
+  const [bagType, setBagType] = useState(kit.bagType)
+  const [construction, setConstruction] = useState(kit.construction)
+  const [constructionOverview, setConstructionOverview] = useState(
+    kit.constructionOverview,
+  )
+  const [dimensionsIn, setDimensionsIn] = useState(kit.dimensionsIn)
+  const [dimensionsCm, setDimensionsCm] = useState(kit.dimensionsCm)
+  const [toolsNotIncluded, setToolsNotIncluded] = useState(
+    kit.toolsNotIncluded.join('\n'),
+  )
+  const [techniques, setTechniques] = useState(kit.techniques.join('\n'))
+  const [customizationOptions, setCustomizationOptions] = useState(
+    kit.customizationOptions.join('\n'),
+  )
+  const [careInstructions, setCareInstructions] = useState(
+    kit.careInstructions.join('\n'),
+  )
+  const [patternFormat, setPatternFormat] = useState(kit.patternFormat)
+  const [availability, setAvailability] = useState(kit.availability)
+
   // Inventory (first variant only for now)
   const firstVariant = kit.variants[0]
   const firstInventory = firstVariant ? kit.inventory[firstVariant.id] : null
@@ -90,6 +112,20 @@ export function ProductEditForm({ kit }: Props) {
         difficulty,
         estimated_making_time: makingTime,
         is_featured: isFeatured,
+        metadata: {
+          tagline,
+          bagType,
+          construction,
+          constructionOverview,
+          dimensionsIn,
+          dimensionsCm,
+          toolsNotIncluded: toolsNotIncluded.split('\n'),
+          techniques: techniques.split('\n'),
+          customizationOptions: customizationOptions.split('\n'),
+          careInstructions: careInstructions.split('\n'),
+          patternFormat,
+          availability,
+        },
       })
       if (result.error) {
         setError(result.error)
@@ -303,6 +339,154 @@ export function ProductEditForm({ kit }: Props) {
             className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
           />
         </label>
+      </section>
+
+      {/* Storefront metadata */}
+      <section className="rounded-xl border border-border bg-card p-5">
+        <div>
+          <h2 className="text-sm font-medium">Storefront details</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Additional content displayed on product cards and product detail pages.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5 sm:col-span-2">
+            <span className="text-xs text-muted-foreground">Tagline</span>
+            <input
+              type="text"
+              value={tagline}
+              onChange={(event) => setTagline(event.target.value)}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Bag type</span>
+            <input
+              type="text"
+              value={bagType}
+              onChange={(event) => setBagType(event.target.value)}
+              placeholder="Tote, Shoulder Bag, Crescent Bag…"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Construction method</span>
+            <input
+              type="text"
+              value={construction}
+              onChange={(event) => setConstruction(event.target.value)}
+              placeholder="Worked in the round"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Availability label</span>
+            <input
+              type="text"
+              value={availability}
+              onChange={(event) => setAvailability(event.target.value)}
+              placeholder="Early Access, Waitlist, Prototype…"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Pattern format</span>
+            <input
+              type="text"
+              value={patternFormat}
+              onChange={(event) => setPatternFormat(event.target.value)}
+              placeholder="Printed booklet plus downloadable PDF"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Dimensions — inches</span>
+            <input
+              type="text"
+              value={dimensionsIn}
+              onChange={(event) => setDimensionsIn(event.target.value)}
+              placeholder="13 in W × 12 in H × 4 in D"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Dimensions — centimeters</span>
+            <input
+              type="text"
+              value={dimensionsCm}
+              onChange={(event) => setDimensionsCm(event.target.value)}
+              placeholder="33 cm × 30 cm × 10 cm"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+        </div>
+
+        <label className="mt-4 flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">Construction overview</span>
+          <textarea
+            value={constructionOverview}
+            onChange={(event) => setConstructionOverview(event.target.value)}
+            rows={3}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+          />
+        </label>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">
+              Techniques — one per line
+            </span>
+            <textarea
+              value={techniques}
+              onChange={(event) => setTechniques(event.target.value)}
+              rows={5}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">
+              Tools not included — one per line
+            </span>
+            <textarea
+              value={toolsNotIncluded}
+              onChange={(event) => setToolsNotIncluded(event.target.value)}
+              rows={5}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">
+              Customization options — one per line
+            </span>
+            <textarea
+              value={customizationOptions}
+              onChange={(event) => setCustomizationOptions(event.target.value)}
+              rows={5}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">
+              Care instructions — one per line
+            </span>
+            <textarea
+              value={careInstructions}
+              onChange={(event) => setCareInstructions(event.target.value)}
+              rows={5}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            />
+          </label>
+        </div>
       </section>
 
       {/* Inventory */}

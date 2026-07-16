@@ -19,6 +19,21 @@ import {
   type PublicationStatus,
 } from '@/lib/product-publication-readiness'
 
+export interface ProductMetadataPayload {
+  tagline: string
+  bagType: string
+  construction: string
+  constructionOverview: string
+  dimensionsIn: string
+  dimensionsCm: string
+  toolsNotIncluded: string[]
+  techniques: string[]
+  customizationOptions: string[]
+  careInstructions: string[]
+  patternFormat: string
+  availability: string
+}
+
 export interface UpdateProductPayload {
   name: string
   slug: string
@@ -32,6 +47,7 @@ export interface UpdateProductPayload {
   difficulty: string
   estimated_making_time: string
   is_featured: boolean
+  metadata?: ProductMetadataPayload
 }
 
 export interface CreateProductPayload {
@@ -75,6 +91,40 @@ export interface ProductVariantPayload {
 
 function isAllowedValue<T extends readonly string[]>(values: T, value: string): value is T[number] {
   return values.includes(value)
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  return value as Record<string, unknown>
+}
+
+function normalizeMetadataList(values: string[]): string[] {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  )
+}
+
+function normalizeProductMetadata(
+  metadata: ProductMetadataPayload,
+): ProductMetadataPayload {
+  return {
+    tagline: metadata.tagline.trim(),
+    bagType: metadata.bagType.trim(),
+    construction: metadata.construction.trim(),
+    constructionOverview: metadata.constructionOverview.trim(),
+    dimensionsIn: metadata.dimensionsIn.trim(),
+    dimensionsCm: metadata.dimensionsCm.trim(),
+    toolsNotIncluded: normalizeMetadataList(metadata.toolsNotIncluded),
+    techniques: normalizeMetadataList(metadata.techniques),
+    customizationOptions: normalizeMetadataList(metadata.customizationOptions),
+    careInstructions: normalizeMetadataList(metadata.careInstructions),
+    patternFormat: metadata.patternFormat.trim(),
+    availability: metadata.availability.trim(),
+  }
 }
 
 function validateProductClassification(
@@ -373,7 +423,7 @@ export async function updateProduct(
   ] = await Promise.all([
     supabase
       .from('products')
-      .select('owner_id, slug, status, visibility')
+      .select('owner_id, slug, status, visibility, metadata')
       .eq('id', id)
       .single(),
     supabase
@@ -400,6 +450,13 @@ export async function updateProduct(
   if (classificationError) return { error: classificationError }
 
   const currentStatus = existingProduct.status as ProductStatus
+  const updatedMetadata = payload.metadata
+    ? {
+        ...metadataRecord(existingProduct.metadata),
+        ...normalizeProductMetadata(payload.metadata),
+      }
+    : existingProduct.metadata
+
   const isBecomingPublic =
     existingProduct.visibility !== 'public' &&
     payload.visibility === 'public'
@@ -465,6 +522,7 @@ export async function updateProduct(
         estimated_making_time: payload.estimated_making_time,
         sale_mode: payload.sale_mode,
       },
+      metadata: metadataRecord(updatedMetadata),
       variants: variantRows,
       images: (images ?? []) as DbImage[],
       inventory: inventoryRows,
@@ -494,6 +552,7 @@ export async function updateProduct(
       difficulty: payload.difficulty,
       estimated_making_time: payload.estimated_making_time,
       is_featured: payload.is_featured,
+      metadata: updatedMetadata,
     })
     .eq('id', id)
 
@@ -605,6 +664,7 @@ export async function updateProductStatus(
     const readiness = evaluateProductPublicationReadiness({
       targetStatus: status,
       product: product as DbProduct,
+      metadata: metadataRecord(product.metadata),
       variants: variantRows,
       images: (images ?? []) as DbImage[],
       inventory: inventoryRows,

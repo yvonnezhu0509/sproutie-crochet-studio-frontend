@@ -113,6 +113,7 @@ export default async function AdminProductDetailPage({ params }: Props) {
   const publicationReadiness = evaluateProductPublicationReadiness({
     targetStatus: 'active',
     product: product as DbProduct,
+    metadata: meta,
     variants: (variants ?? []) as DbVariant[],
     images: sortedImages as DbImage[],
     inventory: (inventory ?? []) as DbInventory[],

@@ -42,6 +42,7 @@ interface ReadinessInput {
     | 'estimated_making_time'
     | 'sale_mode'
   >
+  metadata?: Record<string, unknown>
   variants: DbVariant[]
   images: DbImage[]
   inventory: DbInventory[]
@@ -52,9 +53,31 @@ function hasText(value: string | null | undefined): boolean {
   return Boolean(value?.trim())
 }
 
+function metadataText(
+  metadata: Record<string, unknown>,
+  key: string,
+): string {
+  const value = metadata[key]
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function metadataList(
+  metadata: Record<string, unknown>,
+  key: string,
+): string[] {
+  const value = metadata[key]
+  if (!Array.isArray(value)) return []
+
+  return value.filter(
+    (item): item is string =>
+      typeof item === 'string' && item.trim().length > 0,
+  )
+}
+
 export function evaluateProductPublicationReadiness({
   targetStatus,
   product,
+  metadata = {},
   variants,
   images,
   inventory,
@@ -131,6 +154,64 @@ export function evaluateProductPublicationReadiness({
     'Specify how long the project usually takes.',
     hasText(product.estimated_making_time),
     requiresFullLaunchDetails ? 'blocker' : 'warning',
+  )
+
+  addCheck(
+    'tagline',
+    'Product tagline',
+    'Add a concise tagline for product cards and the product page.',
+    hasText(metadataText(metadata, 'tagline')),
+    requiresFullLaunchDetails ? 'blocker' : 'warning',
+  )
+
+  addCheck(
+    'bag-type',
+    'Bag type',
+    'Specify the product’s bag type.',
+    hasText(metadataText(metadata, 'bagType')),
+    requiresFullLaunchDetails ? 'blocker' : 'warning',
+  )
+
+  addCheck(
+    'construction-details',
+    'Construction details',
+    'Describe the construction method or construction overview.',
+    hasText(metadataText(metadata, 'construction')) ||
+      hasText(metadataText(metadata, 'constructionOverview')),
+    'warning',
+  )
+
+  addCheck(
+    'techniques',
+    'Crochet techniques',
+    'List at least one crochet technique used in the project.',
+    metadataList(metadata, 'techniques').length > 0,
+    requiresFullLaunchDetails ? 'blocker' : 'warning',
+  )
+
+  addCheck(
+    'dimensions',
+    'Finished dimensions',
+    'Add finished dimensions in inches or centimeters.',
+    hasText(metadataText(metadata, 'dimensionsIn')) ||
+      hasText(metadataText(metadata, 'dimensionsCm')),
+    'warning',
+  )
+
+  addCheck(
+    'pattern-format',
+    'Pattern format',
+    'Describe how the pattern will be provided.',
+    hasText(metadataText(metadata, 'patternFormat')),
+    'warning',
+  )
+
+  addCheck(
+    'availability-label',
+    'Availability label',
+    'Add a customer-facing availability label.',
+    hasText(metadataText(metadata, 'availability')),
+    'warning',
   )
 
   addCheck(
