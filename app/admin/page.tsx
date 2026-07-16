@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Package, ArrowRight } from 'lucide-react'
+import { History, Package, ArrowRight } from 'lucide-react'
 import { getAllKitsAdmin } from '@/lib/catalog'
 import type { ProductStatus } from '@/lib/catalog'
 
@@ -70,6 +70,19 @@ export default async function AdminDashboardPage() {
             <div>
               <p className="text-sm font-medium">Materials</p>
               <p className="text-xs text-muted-foreground">Manage component inventory</p>
+            </div>
+          </div>
+          <ArrowRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/admin/inventory-movements"
+          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 transition-colors hover:bg-muted/50"
+        >
+          <div className="flex items-center gap-3">
+            <History className="size-5 text-primary" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-medium">Stock Movements</p>
+              <p className="text-xs text-muted-foreground">Record and review inventory adjustments</p>
             </div>
           </div>
           <ArrowRight className="size-4 text-muted-foreground" aria-hidden="true" />

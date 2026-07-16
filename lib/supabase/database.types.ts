@@ -576,6 +576,34 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }
+      record_material_inventory_movement: {
+        Args: {
+          p_material_id: string
+          p_movement_type: string
+          p_quantity_delta: number
+          p_reference_type?: string | null
+          p_reference_id?: string | null
+          p_note?: string | null
+        }
+        Returns: {
+          movement_id: string
+          new_quantity: number
+        }[]
+      }
+      record_variant_inventory_movement: {
+        Args: {
+          p_variant_id: string
+          p_movement_type: string
+          p_quantity_delta: number
+          p_reference_type?: string | null
+          p_reference_id?: string | null
+          p_note?: string | null
+        }
+        Returns: {
+          movement_id: string
+          new_quantity: number
+        }[]
+      }
     }
     Enums: {
       product_status:
