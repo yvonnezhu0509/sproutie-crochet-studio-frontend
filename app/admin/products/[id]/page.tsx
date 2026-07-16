@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import type { DbVariant, DbInventory } from '@/lib/catalog'
+import type { DbVariant, DbInventory, ProductSaleMode, ProductSourceType, ProductVisibility } from '@/lib/catalog'
 import { getKitItemsAdmin } from '@/lib/catalog'
 import { ProductEditForm } from '@/components/admin/product-edit-form'
 import { KitContentsEditor } from '@/components/admin/kit-contents-editor'
@@ -66,6 +66,10 @@ export default async function AdminProductDetailPage({ params }: Props) {
     shortDescription: product.short_description ?? '',
     description: product.description ?? '',
     status: product.status,
+    sourceType: product.source_type as ProductSourceType,
+    saleMode: product.sale_mode as ProductSaleMode,
+    visibility: product.visibility as ProductVisibility,
+    ownerId: product.owner_id,
     priceCents: product.base_price_cents,
     price: product.base_price_cents / 100,
     currency: product.currency,

@@ -2,7 +2,14 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import type { ProductStatus, DbKitItem } from '@/lib/catalog'
+import type {
+  ProductSaleMode,
+  ProductSourceType,
+  ProductStatus,
+  ProductVisibility,
+  VariantInventoryMode,
+  DbKitItem,
+} from '@/lib/catalog'
 
 export interface UpdateProductPayload {
   name: string
@@ -10,10 +17,77 @@ export interface UpdateProductPayload {
   short_description: string
   description: string
   status: ProductStatus
+  source_type: ProductSourceType
+  sale_mode: ProductSaleMode
+  visibility: ProductVisibility
   base_price_cents: number
   difficulty: string
   estimated_making_time: string
   is_featured: boolean
+}
+
+const PRODUCT_SOURCE_TYPES = ['sproutie_original', 'sproutie_ai', 'customer_ai'] as const
+const PRODUCT_SALE_MODES = ['stocked', 'made_to_order', 'digital'] as const
+const PRODUCT_VISIBILITIES = ['public', 'unlisted', 'private'] as const
+const VARIANT_INVENTORY_MODES = ['assembled', 'component_based', 'unlimited'] as const
+const PUBLIC_CATALOG_STATUSES: ProductStatus[] = ['coming_soon', 'active', 'sold_out']
+
+type ClassificationVariant = {
+  inventory_mode: string
+}
+
+function isAllowedValue<T extends readonly string[]>(values: T, value: string): value is T[number] {
+  return values.includes(value)
+}
+
+function validateProductClassification(
+  payload: Pick<UpdateProductPayload, 'source_type' | 'sale_mode' | 'visibility' | 'status'>,
+  ownerId: string | null,
+  variants: ClassificationVariant[],
+): string | null {
+  if (!isAllowedValue(PRODUCT_SOURCE_TYPES, payload.source_type)) return 'Source type is invalid.'
+  if (!isAllowedValue(PRODUCT_SALE_MODES, payload.sale_mode)) return 'Sale mode is invalid.'
+  if (!isAllowedValue(PRODUCT_VISIBILITIES, payload.visibility)) return 'Visibility is invalid.'
+
+  if (payload.source_type !== 'customer_ai' && ownerId) {
+    return 'Sproutie-owned product types cannot have a customer owner.'
+  }
+
+  if (payload.source_type === 'customer_ai' && payload.visibility === 'public') {
+    return 'Customer-generated products must stay private or unlisted until explicitly reviewed.'
+  }
+
+  if (payload.sale_mode === 'digital' && variants.some((variant) => variant.inventory_mode !== 'unlimited')) {
+    return 'Digital products must use unlimited inventory mode for every variant.'
+  }
+
+  if (payload.sale_mode === 'stocked' && variants.some((variant) => variant.inventory_mode === 'unlimited')) {
+    return 'Stocked products cannot use unlimited inventory mode.'
+  }
+
+  if (
+    payload.source_type === 'customer_ai' &&
+    payload.visibility === 'public' &&
+    PUBLIC_CATALOG_STATUSES.includes(payload.status)
+  ) {
+    return 'Customer-generated products cannot appear in public listings until reviewed.'
+  }
+
+  return null
+}
+
+function validateVariantInventoryMode(
+  saleMode: string,
+  inventoryMode: VariantInventoryMode,
+): string | null {
+  if (!isAllowedValue(VARIANT_INVENTORY_MODES, inventoryMode)) return 'Inventory mode is invalid.'
+  if (saleMode === 'digital' && inventoryMode !== 'unlimited') {
+    return 'Digital products must use unlimited inventory mode.'
+  }
+  if (saleMode === 'stocked' && inventoryMode === 'unlimited') {
+    return 'Stocked products cannot use unlimited inventory mode.'
+  }
+  return null
 }
 
 export async function updateProduct(
@@ -21,6 +95,38 @@ export async function updateProduct(
   payload: UpdateProductPayload,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient()
+
+  const [
+    { data: existingProduct, error: productError },
+    { data: variants, error: variantsError },
+  ] = await Promise.all([
+    supabase
+      .from('products')
+      .select('owner_id, slug')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('product_variants')
+      .select('inventory_mode')
+      .eq('product_id', id),
+  ])
+
+  if (productError || !existingProduct) {
+    if (productError) console.error('[admin] updateProduct load error:', productError.message)
+    return { error: 'Could not load this product before saving. Please refresh and try again.' }
+  }
+
+  if (variantsError) {
+    console.error('[admin] updateProduct variants error:', variantsError.message)
+    return { error: 'Could not verify variant inventory modes. Please refresh and try again.' }
+  }
+
+  const classificationError = validateProductClassification(
+    payload,
+    existingProduct.owner_id,
+    variants ?? [],
+  )
+  if (classificationError) return { error: classificationError }
 
   const { error } = await supabase
     .from('products')
@@ -30,6 +136,9 @@ export async function updateProduct(
       short_description: payload.short_description,
       description: payload.description,
       status: payload.status,
+      source_type: payload.source_type,
+      sale_mode: payload.sale_mode,
+      visibility: payload.visibility,
       base_price_cents: payload.base_price_cents,
       difficulty: payload.difficulty,
       estimated_making_time: payload.estimated_making_time,
@@ -45,6 +154,7 @@ export async function updateProduct(
   revalidatePath('/admin/products')
   revalidatePath('/admin')
   revalidatePath('/originals')
+  revalidatePath(`/originals/${existingProduct.slug}`)
   revalidatePath(`/originals/${payload.slug}`)
   revalidatePath('/')
   return { error: null }
@@ -56,6 +166,25 @@ export async function updateProductStatus(
   slug: string,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient()
+
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('source_type, visibility')
+    .eq('id', id)
+    .single()
+
+  if (productError || !product) {
+    if (productError) console.error('[admin] updateProductStatus load error:', productError.message)
+    return { error: 'Could not verify this product before changing status.' }
+  }
+
+  if (
+    product.source_type === 'customer_ai' &&
+    product.visibility === 'public' &&
+    PUBLIC_CATALOG_STATUSES.includes(status)
+  ) {
+    return { error: 'Customer-generated products cannot appear in public listings until reviewed.' }
+  }
 
   const { error } = await supabase
     .from('products')
@@ -71,6 +200,62 @@ export async function updateProductStatus(
   revalidatePath('/admin')
   revalidatePath('/originals')
   revalidatePath(`/originals/${slug}`)
+  revalidatePath('/')
+  return { error: null }
+}
+
+export async function updateVariantInventoryMode(
+  variantId: string,
+  productId: string,
+  productSlug: string,
+  inventoryMode: VariantInventoryMode,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient()
+
+  const [
+    { data: product, error: productError },
+    { data: variant, error: variantError },
+  ] = await Promise.all([
+    supabase
+      .from('products')
+      .select('sale_mode')
+      .eq('id', productId)
+      .single(),
+    supabase
+      .from('product_variants')
+      .select('id, product_id')
+      .eq('id', variantId)
+      .eq('product_id', productId)
+      .maybeSingle(),
+  ])
+
+  if (productError || !product) {
+    if (productError) console.error('[admin] updateVariantInventoryMode product error:', productError.message)
+    return { error: 'Could not verify this product before saving inventory mode.' }
+  }
+
+  if (variantError || !variant) {
+    if (variantError) console.error('[admin] updateVariantInventoryMode variant error:', variantError.message)
+    return { error: 'The selected variant does not belong to this product.' }
+  }
+
+  const validationError = validateVariantInventoryMode(product.sale_mode, inventoryMode)
+  if (validationError) return { error: validationError }
+
+  const { error } = await supabase
+    .from('product_variants')
+    .update({ inventory_mode: inventoryMode })
+    .eq('id', variantId)
+    .eq('product_id', productId)
+
+  if (error) {
+    console.error('[admin] updateVariantInventoryMode error:', error.message)
+    return { error: 'Could not save inventory mode. Please try again.' }
+  }
+
+  revalidatePath('/admin/products')
+  revalidatePath(`/admin/products/${productId}`)
+  revalidatePath(`/originals/${productSlug}`)
   revalidatePath('/')
   return { error: null }
 }

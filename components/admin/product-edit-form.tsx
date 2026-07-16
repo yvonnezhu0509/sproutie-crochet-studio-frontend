@@ -5,8 +5,20 @@ import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
-import { updateProduct, updateProductStatus, updateInventory } from '@/app/admin/products/actions'
-import type { CatalogKit, ProductStatus } from '@/lib/catalog'
+import {
+  updateProduct,
+  updateProductStatus,
+  updateInventory,
+  updateVariantInventoryMode,
+} from '@/app/admin/products/actions'
+import type {
+  CatalogKit,
+  ProductSaleMode,
+  ProductSourceType,
+  ProductStatus,
+  ProductVisibility,
+  VariantInventoryMode,
+} from '@/lib/catalog'
 
 const STATUSES: { value: ProductStatus; label: string }[] = [
   { value: 'draft', label: 'Draft' },
@@ -14,6 +26,46 @@ const STATUSES: { value: ProductStatus; label: string }[] = [
   { value: 'active', label: 'Active' },
   { value: 'sold_out', label: 'Sold Out' },
   { value: 'archived', label: 'Archived' },
+]
+
+const SOURCE_TYPES: { value: ProductSourceType; label: string }[] = [
+  { value: 'sproutie_original', label: 'Sproutie Original' },
+  { value: 'sproutie_ai', label: 'Sproutie AI-assisted' },
+  { value: 'customer_ai', label: 'Customer-generated AI' },
+]
+
+const SALE_MODES: { value: ProductSaleMode; label: string }[] = [
+  { value: 'stocked', label: 'Stocked' },
+  { value: 'made_to_order', label: 'Made to order' },
+  { value: 'digital', label: 'Digital' },
+]
+
+const VISIBILITIES: { value: ProductVisibility; label: string }[] = [
+  { value: 'public', label: 'Public' },
+  { value: 'unlisted', label: 'Unlisted' },
+  { value: 'private', label: 'Private' },
+]
+
+const INVENTORY_MODES: {
+  value: VariantInventoryMode
+  label: string
+  description: string
+}[] = [
+  {
+    value: 'assembled',
+    label: 'Assembled',
+    description: 'Tracks packaged kit stock in inventory.',
+  },
+  {
+    value: 'component_based',
+    label: 'Component based',
+    description: 'Availability is derived from linked materials and BOM.',
+  },
+  {
+    value: 'unlimited',
+    label: 'Unlimited',
+    description: 'For digital or non-stock-limited products.',
+  },
 ]
 
 interface Props {
@@ -32,6 +84,9 @@ export function ProductEditForm({ kit }: Props) {
   const [shortDesc, setShortDesc] = useState(kit.shortDescription)
   const [description, setDescription] = useState(kit.description)
   const [status, setStatus] = useState<ProductStatus>(kit.status)
+  const [sourceType, setSourceType] = useState<ProductSourceType>(kit.sourceType)
+  const [saleMode, setSaleMode] = useState<ProductSaleMode>(kit.saleMode)
+  const [visibility, setVisibility] = useState<ProductVisibility>(kit.visibility)
   const [priceCents, setPriceCents] = useState(kit.priceCents)
   const [difficulty, setDifficulty] = useState(kit.difficulty)
   const [makingTime, setMakingTime] = useState(kit.makingTime)
@@ -52,6 +107,9 @@ export function ProductEditForm({ kit }: Props) {
         short_description: shortDesc,
         description,
         status,
+        source_type: sourceType,
+        sale_mode: saleMode,
+        visibility,
         base_price_cents: priceCents,
         difficulty,
         estimated_making_time: makingTime,
@@ -70,8 +128,14 @@ export function ProductEditForm({ kit }: Props) {
   function handleStatusChange(newStatus: ProductStatus) {
     setStatus(newStatus)
     startTransition(async () => {
-      await updateProductStatus(kit.id, newStatus, kit.slug)
-      router.refresh()
+      const result = await updateProductStatus(kit.id, newStatus, kit.slug)
+      if (result.error) {
+        setError(result.error)
+        setStatus(kit.status)
+      } else {
+        setError(null)
+        router.refresh()
+      }
     })
   }
 
@@ -79,6 +143,15 @@ export function ProductEditForm({ kit }: Props) {
     if (!firstVariant) return
     startTransition(async () => {
       const result = await updateInventory(firstVariant.id, qty, kit.slug)
+      if (result.error) setError(result.error)
+      else router.refresh()
+    })
+  }
+
+  function handleInventoryModeChange(variantId: string, inventoryMode: VariantInventoryMode) {
+    setError(null)
+    startTransition(async () => {
+      const result = await updateVariantInventoryMode(variantId, kit.id, kit.slug, inventoryMode)
       if (result.error) setError(result.error)
       else router.refresh()
     })
@@ -177,6 +250,62 @@ export function ProductEditForm({ kit }: Props) {
             />
           </label>
 
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Source type</span>
+            <select
+              value={sourceType}
+              onChange={(e) => setSourceType(e.target.value as ProductSourceType)}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            >
+              {SOURCE_TYPES.map((source) => (
+                <option key={source.value} value={source.value}>
+                  {source.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Sale mode</span>
+            <select
+              value={saleMode}
+              onChange={(e) => setSaleMode(e.target.value as ProductSaleMode)}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            >
+              {SALE_MODES.map((mode) => (
+                <option key={mode.value} value={mode.value}>
+                  {mode.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Visibility</span>
+            <select
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as ProductVisibility)}
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-ring/50 focus:ring-2"
+            >
+              {VISIBILITIES.map((visibilityOption) => (
+                <option key={visibilityOption.value} value={visibilityOption.value}>
+                  {visibilityOption.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Owner</span>
+            <div className="min-h-10 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              {kit.ownerId ? (
+                <span className="font-mono text-xs">{kit.ownerId}</span>
+              ) : (
+                'Sproutie-owned product'
+              )}
+            </div>
+          </div>
+
           <label className="flex items-center gap-2.5 pt-5">
             <input
               type="checkbox"
@@ -213,6 +342,38 @@ export function ProductEditForm({ kit }: Props) {
       {firstVariant && (
         <section className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-4 text-sm font-medium">Inventory</h2>
+          <div className="mb-5 grid gap-3">
+            {kit.variants.map((variant) => (
+              <label
+                key={variant.id}
+                className="grid gap-2 rounded-lg border border-border bg-background p-3 sm:grid-cols-[minmax(0,1fr)_220px]"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{variant.variant_name}</span>
+                  <span className="block truncate font-mono text-xs text-muted-foreground">
+                    {variant.sku || variant.id}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {INVENTORY_MODES.find((mode) => mode.value === variant.inventory_mode)?.description}
+                  </span>
+                </span>
+                <select
+                  value={variant.inventory_mode}
+                  onChange={(e) =>
+                    handleInventoryModeChange(variant.id, e.target.value as VariantInventoryMode)
+                  }
+                  disabled={isPending}
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none ring-ring/50 focus:ring-2"
+                >
+                  {INVENTORY_MODES.map((mode) => (
+                    <option key={mode.value} value={mode.value}>
+                      {mode.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
           <div className="flex items-end gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-muted-foreground">
