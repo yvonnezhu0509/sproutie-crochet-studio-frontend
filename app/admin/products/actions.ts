@@ -32,8 +32,20 @@ const PRODUCT_VISIBILITIES = ['public', 'unlisted', 'private'] as const
 const VARIANT_INVENTORY_MODES = ['assembled', 'component_based', 'unlimited'] as const
 const PUBLIC_CATALOG_STATUSES: ProductStatus[] = ['coming_soon', 'active', 'sold_out']
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
 type ClassificationVariant = {
   inventory_mode: string
+}
+
+export interface ProductVariantPayload {
+  variant_name: string
+  sku: string
+  price_cents: number
+  inventory_mode: VariantInventoryMode
+  is_active: boolean
+  option_values: Record<string, string>
+  low_stock_threshold: number
 }
 
 function isAllowedValue<T extends readonly string[]>(values: T, value: string): value is T[number] {
@@ -87,6 +99,146 @@ function validateVariantInventoryMode(
   if (saleMode === 'stocked' && inventoryMode === 'unlimited') {
     return 'Stocked products cannot use unlimited inventory mode.'
   }
+  return null
+}
+
+function normalizeOptionValues(
+  optionValues: Record<string, string>,
+): { values: Record<string, string>; error: string | null } {
+  const values: Record<string, string> = {}
+
+  for (const [rawKey, rawValue] of Object.entries(optionValues)) {
+    const key = rawKey.trim()
+    const value = String(rawValue ?? '').trim()
+
+    if (!key && !value) continue
+    if (!key || !value) {
+      return { values: {}, error: 'Each option needs both a label and a value.' }
+    }
+    if (values[key]) return { values: {}, error: `Option "${key}" is duplicated.` }
+    values[key] = value
+  }
+
+  return { values, error: null }
+}
+
+function validateVariantPayload(
+  payload: ProductVariantPayload,
+): { error: string | null; optionValues: Record<string, string> } {
+  if (!payload.variant_name.trim()) return { error: 'Variant name is required.', optionValues: {} }
+  if (!payload.sku.trim()) return { error: 'SKU is required.', optionValues: {} }
+  if (!Number.isFinite(payload.price_cents) || payload.price_cents < 0) {
+    return { error: 'Price cannot be negative.', optionValues: {} }
+  }
+  if (!Number.isInteger(payload.price_cents)) {
+    return { error: 'Price must be saved as whole cents.', optionValues: {} }
+  }
+  if (!Number.isFinite(payload.low_stock_threshold) || payload.low_stock_threshold < 0) {
+    return { error: 'Low-stock threshold cannot be negative.', optionValues: {} }
+  }
+  if (!Number.isInteger(payload.low_stock_threshold)) {
+    return { error: 'Low-stock threshold must be a whole number.', optionValues: {} }
+  }
+
+  const { values, error } = normalizeOptionValues(payload.option_values)
+  return { error, optionValues: values }
+}
+
+function friendlyVariantError(message: string): string {
+  const lower = message.toLowerCase()
+  if (lower.includes('row-level security')) return 'You do not have permission to change variants.'
+  if (lower.includes('duplicate') || lower.includes('unique')) return 'That SKU is already in use.'
+  if (lower.includes('foreign key')) return 'The selected product or variant is no longer available.'
+  if (lower.includes('violates check constraint')) return 'One or more variant values are outside the allowed range.'
+  return 'Could not save the variant. Please check the fields and try again.'
+}
+
+async function skuIsAlreadyUsed(
+  supabase: SupabaseServerClient,
+  sku: string,
+  existingVariantId?: string,
+): Promise<{ used: boolean; error: string | null }> {
+  const { data, error } = await supabase
+    .from('product_variants')
+    .select('id')
+    .eq('sku', sku)
+    .limit(1)
+
+  if (error) {
+    console.error('[admin] skuIsAlreadyUsed error:', error.message)
+    return { used: false, error: 'Could not verify SKU uniqueness. Please try again.' }
+  }
+
+  return {
+    used: (data ?? []).some((variant) => variant.id !== existingVariantId),
+    error: null,
+  }
+}
+
+async function ensureAssembledInventoryRow(
+  supabase: SupabaseServerClient,
+  variantId: string,
+  lowStockThreshold: number,
+): Promise<string | null> {
+  const { data: existing, error: loadError } = await supabase
+    .from('inventory')
+    .select('variant_id')
+    .eq('variant_id', variantId)
+    .maybeSingle()
+
+  if (loadError) {
+    console.error('[admin] ensureAssembledInventoryRow load error:', loadError.message)
+    return 'Could not verify the assembled inventory row.'
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from('inventory')
+      .update({
+        low_stock_threshold: lowStockThreshold,
+        track_inventory: true,
+      })
+      .eq('variant_id', variantId)
+
+    if (error) {
+      console.error('[admin] ensureAssembledInventoryRow update error:', error.message)
+      return 'Could not update assembled inventory tracking.'
+    }
+    return null
+  }
+
+  const { error } = await supabase
+    .from('inventory')
+    .insert({
+      variant_id: variantId,
+      quantity_on_hand: 0,
+      quantity_reserved: 0,
+      low_stock_threshold: lowStockThreshold,
+      track_inventory: true,
+    })
+
+  if (error) {
+    console.error('[admin] ensureAssembledInventoryRow insert error:', error.message)
+    return 'Could not initialize assembled inventory for this variant.'
+  }
+
+  return null
+}
+
+async function disableInventoryTracking(
+  supabase: SupabaseServerClient,
+  variantId: string,
+): Promise<string | null> {
+  const { error } = await supabase
+    .from('inventory')
+    .update({ track_inventory: false })
+    .eq('variant_id', variantId)
+
+  if (error) {
+    console.error('[admin] disableInventoryTracking error:', error.message)
+    return 'Could not turn off assembled inventory tracking.'
+  }
+
   return null
 }
 
@@ -204,13 +356,117 @@ export async function updateProductStatus(
   return { error: null }
 }
 
-export async function updateVariantInventoryMode(
-  variantId: string,
+export async function createProductVariant(
   productId: string,
   productSlug: string,
-  inventoryMode: VariantInventoryMode,
+  payload: ProductVariantPayload,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient()
+  const sku = payload.sku.trim()
+  const variantName = payload.variant_name.trim()
+  const payloadValidation = validateVariantPayload(payload)
+  if (payloadValidation.error) return { error: payloadValidation.error }
+
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('id, sale_mode')
+    .eq('id', productId)
+    .single()
+
+  if (productError || !product) {
+    if (productError) console.error('[admin] createProductVariant product error:', productError.message)
+    return { error: 'Could not verify this product before creating a variant.' }
+  }
+
+  const modeError = validateVariantInventoryMode(product.sale_mode, payload.inventory_mode)
+  if (modeError) return { error: modeError }
+
+  const skuCheck = await skuIsAlreadyUsed(supabase, sku)
+  if (skuCheck.error) return { error: skuCheck.error }
+  if (skuCheck.used) return { error: 'That SKU is already in use.' }
+
+  const shouldInitializeInventory = payload.inventory_mode === 'assembled'
+
+  const { data: variant, error: insertError } = await supabase
+    .from('product_variants')
+    .insert({
+      product_id: productId,
+      sku,
+      variant_name: variantName,
+      option_values: payloadValidation.optionValues,
+      price_cents: payload.price_cents,
+      inventory_mode: payload.inventory_mode,
+      is_active: shouldInitializeInventory ? false : payload.is_active,
+    })
+    .select('id')
+    .single()
+
+  if (insertError || !variant) {
+    if (insertError) console.error('[admin] createProductVariant insert error:', insertError.message)
+    return { error: insertError ? friendlyVariantError(insertError.message) : 'Could not create the variant.' }
+  }
+
+  if (shouldInitializeInventory) {
+    const inventoryError = await ensureAssembledInventoryRow(
+      supabase,
+      variant.id,
+      payload.low_stock_threshold,
+    )
+
+    if (inventoryError) {
+      const { error: cleanupError } = await supabase
+        .from('product_variants')
+        .delete()
+        .eq('id', variant.id)
+        .eq('product_id', productId)
+
+      if (cleanupError) {
+        console.error('[admin] createProductVariant cleanup delete error:', cleanupError.message)
+        revalidatePath(`/admin/products/${productId}`)
+        return {
+          error: `${inventoryError} Cleanup also failed, so an incomplete inactive variant may require admin attention.`,
+        }
+      }
+
+      revalidatePath(`/admin/products/${productId}`)
+      return {
+        error: `${inventoryError} The variant was not created.`,
+      }
+    }
+
+    if (payload.is_active) {
+      const { error: activateError } = await supabase
+        .from('product_variants')
+        .update({ is_active: true })
+        .eq('id', variant.id)
+        .eq('product_id', productId)
+
+      if (activateError) {
+        console.error('[admin] createProductVariant activate error:', activateError.message)
+        revalidatePath(`/admin/products/${productId}`)
+        return { error: 'The variant was created with inventory tracking but could not be activated.' }
+      }
+    }
+  }
+
+  revalidatePath('/admin/products')
+  revalidatePath(`/admin/products/${productId}`)
+  revalidatePath(`/originals/${productSlug}`)
+  revalidatePath('/')
+  return { error: null }
+}
+
+export async function updateProductVariant(
+  productId: string,
+  productSlug: string,
+  variantId: string,
+  payload: ProductVariantPayload,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient()
+  const sku = payload.sku.trim()
+  const variantName = payload.variant_name.trim()
+  const payloadValidation = validateVariantPayload(payload)
+  if (payloadValidation.error) return { error: payloadValidation.error }
 
   const [
     { data: product, error: productError },
@@ -218,39 +474,72 @@ export async function updateVariantInventoryMode(
   ] = await Promise.all([
     supabase
       .from('products')
-      .select('sale_mode')
+      .select('id, sale_mode')
       .eq('id', productId)
       .single(),
     supabase
       .from('product_variants')
-      .select('id, product_id')
+      .select('id, product_id, inventory_mode, is_active')
       .eq('id', variantId)
       .eq('product_id', productId)
       .maybeSingle(),
   ])
 
   if (productError || !product) {
-    if (productError) console.error('[admin] updateVariantInventoryMode product error:', productError.message)
-    return { error: 'Could not verify this product before saving inventory mode.' }
+    if (productError) console.error('[admin] updateProductVariant product error:', productError.message)
+    return { error: 'Could not verify this product before saving the variant.' }
   }
 
   if (variantError || !variant) {
-    if (variantError) console.error('[admin] updateVariantInventoryMode variant error:', variantError.message)
+    if (variantError) console.error('[admin] updateProductVariant variant error:', variantError.message)
     return { error: 'The selected variant does not belong to this product.' }
   }
 
-  const validationError = validateVariantInventoryMode(product.sale_mode, inventoryMode)
-  if (validationError) return { error: validationError }
+  const modeError = validateVariantInventoryMode(product.sale_mode, payload.inventory_mode)
+  if (modeError) return { error: modeError }
+
+  const skuCheck = await skuIsAlreadyUsed(supabase, sku, variantId)
+  if (skuCheck.error) return { error: skuCheck.error }
+  if (skuCheck.used) return { error: 'That SKU is already in use.' }
+
+  if (payload.inventory_mode === 'assembled') {
+    const inventoryError = await ensureAssembledInventoryRow(
+      supabase,
+      variantId,
+      payload.low_stock_threshold,
+    )
+    if (inventoryError) return { error: inventoryError }
+  } else if (variant.inventory_mode === 'assembled') {
+    const trackingError = await disableInventoryTracking(supabase, variantId)
+    if (trackingError) return { error: trackingError }
+  }
 
   const { error } = await supabase
     .from('product_variants')
-    .update({ inventory_mode: inventoryMode })
+    .update({
+      sku,
+      variant_name: variantName,
+      option_values: payloadValidation.optionValues,
+      price_cents: payload.price_cents,
+      inventory_mode: payload.inventory_mode,
+      is_active: payload.is_active,
+    })
     .eq('id', variantId)
     .eq('product_id', productId)
 
   if (error) {
-    console.error('[admin] updateVariantInventoryMode error:', error.message)
-    return { error: 'Could not save inventory mode. Please try again.' }
+    console.error('[admin] updateProductVariant error:', error.message)
+    if (payload.inventory_mode === 'assembled' && variant.inventory_mode !== 'assembled') {
+      await disableInventoryTracking(supabase, variantId)
+    }
+    if (payload.inventory_mode !== 'assembled' && variant.inventory_mode === 'assembled') {
+      await ensureAssembledInventoryRow(supabase, variantId, payload.low_stock_threshold)
+    }
+    return { error: friendlyVariantError(error.message) }
+  }
+
+  if (payload.inventory_mode !== 'assembled' && variant.inventory_mode !== 'assembled') {
+    await disableInventoryTracking(supabase, variantId)
   }
 
   revalidatePath('/admin/products')
