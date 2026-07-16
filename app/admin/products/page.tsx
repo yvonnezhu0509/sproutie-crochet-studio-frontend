@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Pencil } from 'lucide-react'
 import { getAllKitsAdmin } from '@/lib/catalog'
+import { CreateProductForm } from '@/components/admin/create-product-form'
 import type { ProductSaleMode, ProductSourceType, ProductStatus, ProductVisibility, VariantInventoryMode } from '@/lib/catalog'
 
 export const metadata: Metadata = { title: 'Products' }
@@ -50,11 +51,15 @@ export default async function AdminProductsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10 sm:px-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-semibold">Products</h1>
         <span className="text-sm text-muted-foreground">
           {kits.length} product{kits.length !== 1 ? 's' : ''}
         </span>
+      </div>
+
+      <div className="mt-6">
+        <CreateProductForm />
       </div>
 
       <div className="mt-6 flex flex-col gap-3">

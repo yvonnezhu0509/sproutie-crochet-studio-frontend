@@ -34,6 +34,19 @@ export interface UpdateProductPayload {
   is_featured: boolean
 }
 
+export interface CreateProductPayload {
+  name: string
+  slug: string
+  source_type: ProductSourceType
+  sale_mode: ProductSaleMode
+  visibility: ProductVisibility
+}
+
+export interface CreateProductResult {
+  error: string | null
+  productId: string | null
+}
+
 const PRODUCT_SOURCE_TYPES = ['sproutie_original', 'sproutie_ai', 'customer_ai'] as const
 const PRODUCT_SALE_MODES = ['stocked', 'made_to_order', 'digital'] as const
 const PRODUCT_VISIBILITIES = ['public', 'unlisted', 'private'] as const
@@ -252,6 +265,100 @@ async function disableInventoryTracking(
   }
 
   return null
+}
+
+function friendlyProductError(message: string): string {
+  const lower = message.toLowerCase()
+
+  if (lower.includes('row-level security')) {
+    return 'You do not have permission to create products.'
+  }
+
+  if (
+    lower.includes('products_slug_key') ||
+    lower.includes('duplicate') ||
+    lower.includes('unique')
+  ) {
+    return 'A product with that slug already exists.'
+  }
+
+  if (lower.includes('violates check constraint')) {
+    return 'One or more product values are outside the allowed range.'
+  }
+
+  return 'Could not create the product. Please check the fields and try again.'
+}
+
+export async function createProduct(
+  payload: CreateProductPayload,
+): Promise<CreateProductResult> {
+  const name = payload.name.trim()
+  const slug = payload.slug.trim().toLowerCase()
+
+  if (!name) {
+    return { error: 'Product name is required.', productId: null }
+  }
+
+  if (!slug) {
+    return { error: 'Product slug is required.', productId: null }
+  }
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    return {
+      error: 'Slug may contain only lowercase letters, numbers, and single hyphens.',
+      productId: null,
+    }
+  }
+
+  const classificationError = validateProductClassification(
+    {
+      source_type: payload.source_type,
+      sale_mode: payload.sale_mode,
+      visibility: payload.visibility,
+      status: 'draft',
+    },
+    null,
+    [],
+  )
+
+  if (classificationError) {
+    return { error: classificationError, productId: null }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('products')
+    .insert({
+      name,
+      slug,
+      status: 'draft',
+      source_type: payload.source_type,
+      sale_mode: payload.sale_mode,
+      visibility: payload.visibility,
+      base_price_cents: 0,
+      currency: 'USD',
+      metadata: {},
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) {
+    if (error) {
+      console.error('[admin] createProduct error:', error.message)
+    }
+
+    return {
+      error: error
+        ? friendlyProductError(error.message)
+        : 'Could not create the product.',
+      productId: null,
+    }
+  }
+
+  revalidatePath('/admin/products')
+  revalidatePath('/admin')
+
+  return { error: null, productId: data.id }
 }
 
 export async function updateProduct(
