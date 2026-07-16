@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { DbVariant, DbInventory, ProductSaleMode, ProductSourceType, ProductVisibility } from '@/lib/catalog'
 import { getKitItemsAdmin } from '@/lib/catalog'
 import { ProductEditForm } from '@/components/admin/product-edit-form'
+import { ProductVariantsManager } from '@/components/admin/product-variants-manager'
 import { KitContentsEditor } from '@/components/admin/kit-contents-editor'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,7 @@ export default async function AdminProductDetailPage({ params }: Props) {
     { data: images },
   ] = await Promise.all([
     supabase.from('products').select('*').eq('id', id).single(),
-    supabase.from('product_variants').select('*').eq('product_id', id),
+    supabase.from('product_variants').select('*').eq('product_id', id).order('created_at'),
     supabase.from('product_images').select('*').eq('product_id', id).order('sort_order'),
   ])
 
@@ -111,6 +112,14 @@ export default async function AdminProductDetailPage({ params }: Props) {
 
       <div className="mt-8 flex flex-col gap-8">
         <ProductEditForm kit={kit} />
+        <ProductVariantsManager
+          productId={product.id}
+          productSlug={product.slug}
+          saleMode={kit.saleMode}
+          productBasePriceCents={kit.priceCents}
+          variants={(variants ?? []) as DbVariant[]}
+          inventory={inventoryMap}
+        />
         <KitContentsEditor
           productId={product.id}
           productSlug={product.slug}

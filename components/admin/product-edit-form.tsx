@@ -9,7 +9,6 @@ import {
   updateProduct,
   updateProductStatus,
   updateInventory,
-  updateVariantInventoryMode,
 } from '@/app/admin/products/actions'
 import type {
   CatalogKit,
@@ -17,7 +16,6 @@ import type {
   ProductSourceType,
   ProductStatus,
   ProductVisibility,
-  VariantInventoryMode,
 } from '@/lib/catalog'
 
 const STATUSES: { value: ProductStatus; label: string }[] = [
@@ -44,28 +42,6 @@ const VISIBILITIES: { value: ProductVisibility; label: string }[] = [
   { value: 'public', label: 'Public' },
   { value: 'unlisted', label: 'Unlisted' },
   { value: 'private', label: 'Private' },
-]
-
-const INVENTORY_MODES: {
-  value: VariantInventoryMode
-  label: string
-  description: string
-}[] = [
-  {
-    value: 'assembled',
-    label: 'Assembled',
-    description: 'Tracks packaged kit stock in inventory.',
-  },
-  {
-    value: 'component_based',
-    label: 'Component based',
-    description: 'Availability is derived from linked materials and BOM.',
-  },
-  {
-    value: 'unlimited',
-    label: 'Unlimited',
-    description: 'For digital or non-stock-limited products.',
-  },
 ]
 
 interface Props {
@@ -143,15 +119,6 @@ export function ProductEditForm({ kit }: Props) {
     if (!firstVariant) return
     startTransition(async () => {
       const result = await updateInventory(firstVariant.id, qty, kit.slug)
-      if (result.error) setError(result.error)
-      else router.refresh()
-    })
-  }
-
-  function handleInventoryModeChange(variantId: string, inventoryMode: VariantInventoryMode) {
-    setError(null)
-    startTransition(async () => {
-      const result = await updateVariantInventoryMode(variantId, kit.id, kit.slug, inventoryMode)
       if (result.error) setError(result.error)
       else router.refresh()
     })
@@ -342,38 +309,6 @@ export function ProductEditForm({ kit }: Props) {
       {firstVariant && (
         <section className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-4 text-sm font-medium">Inventory</h2>
-          <div className="mb-5 grid gap-3">
-            {kit.variants.map((variant) => (
-              <label
-                key={variant.id}
-                className="grid gap-2 rounded-lg border border-border bg-background p-3 sm:grid-cols-[minmax(0,1fr)_220px]"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{variant.variant_name}</span>
-                  <span className="block truncate font-mono text-xs text-muted-foreground">
-                    {variant.sku || variant.id}
-                  </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {INVENTORY_MODES.find((mode) => mode.value === variant.inventory_mode)?.description}
-                  </span>
-                </span>
-                <select
-                  value={variant.inventory_mode}
-                  onChange={(e) =>
-                    handleInventoryModeChange(variant.id, e.target.value as VariantInventoryMode)
-                  }
-                  disabled={isPending}
-                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none ring-ring/50 focus:ring-2"
-                >
-                  {INVENTORY_MODES.map((mode) => (
-                    <option key={mode.value} value={mode.value}>
-                      {mode.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
           <div className="flex items-end gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-muted-foreground">
