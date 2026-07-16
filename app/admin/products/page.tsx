@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Pencil } from 'lucide-react'
 import { getAllKitsAdmin } from '@/lib/catalog'
-import type { ProductStatus } from '@/lib/catalog'
+import type { ProductSaleMode, ProductSourceType, ProductStatus, ProductVisibility, VariantInventoryMode } from '@/lib/catalog'
 
 export const metadata: Metadata = { title: 'Products' }
 
@@ -13,6 +13,36 @@ const STATUS_COLORS: Record<ProductStatus, string> = {
   active: 'bg-sprout text-sprout-foreground',
   sold_out: 'bg-warm text-warm-foreground',
   archived: 'bg-muted text-muted-foreground',
+}
+
+const SOURCE_LABELS: Record<ProductSourceType, string> = {
+  sproutie_original: 'Original',
+  sproutie_ai: 'Sproutie AI',
+  customer_ai: 'Customer AI',
+}
+
+const SALE_MODE_LABELS: Record<ProductSaleMode, string> = {
+  stocked: 'Stocked',
+  made_to_order: 'Made to order',
+  digital: 'Digital',
+}
+
+const VISIBILITY_LABELS: Record<ProductVisibility, string> = {
+  public: 'Public',
+  unlisted: 'Unlisted',
+  private: 'Private',
+}
+
+const INVENTORY_MODE_LABELS: Record<VariantInventoryMode, string> = {
+  assembled: 'Assembled',
+  component_based: 'Component based',
+  unlimited: 'Unlimited',
+}
+
+function badgeClass(visibility: ProductVisibility): string {
+  if (visibility === 'public') return 'border-sprout/40 bg-sprout/10 text-sprout'
+  if (visibility === 'private') return 'border-warm/40 bg-warm/10 text-warm-foreground'
+  return 'border-border bg-muted text-muted-foreground'
 }
 
 export default async function AdminProductsPage() {
@@ -30,6 +60,9 @@ export default async function AdminProductsPage() {
       <div className="mt-6 flex flex-col gap-3">
         {kits.map((kit) => {
           const inv = kit.variants[0] ? kit.inventory[kit.variants[0].id] : null
+          const inventoryModes = Array.from(
+            new Set(kit.variants.map((variant) => variant.inventory_mode)),
+          )
           return (
             <div
               key={kit.id}
@@ -62,10 +95,22 @@ export default async function AdminProductsPage() {
                       Featured
                     </span>
                   )}
+                  <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {SOURCE_LABELS[kit.sourceType]}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {SALE_MODE_LABELS[kit.saleMode]}
+                  </span>
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${badgeClass(kit.visibility)}`}>
+                    {VISIBILITY_LABELS[kit.visibility]}
+                  </span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   ${kit.price.toFixed(0)} &middot; {kit.difficulty || 'No difficulty set'}
                   {inv ? ` · ${inv.quantity_on_hand} in stock` : ''}
+                  {inventoryModes.length
+                    ? ` · ${inventoryModes.map((mode) => INVENTORY_MODE_LABELS[mode]).join(', ')}`
+                    : ''}
                 </p>
               </div>
 

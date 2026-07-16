@@ -14,6 +14,10 @@ import { createClient } from '@/lib/supabase/server'
 // ---------------------------------------------------------------------------
 
 export type ProductStatus = 'draft' | 'coming_soon' | 'active' | 'sold_out' | 'archived'
+export type ProductSourceType = 'sproutie_original' | 'sproutie_ai' | 'customer_ai'
+export type ProductSaleMode = 'stocked' | 'made_to_order' | 'digital'
+export type ProductVisibility = 'public' | 'unlisted' | 'private'
+export type VariantInventoryMode = 'assembled' | 'component_based' | 'unlimited'
 
 export interface DbProduct {
   id: string
@@ -22,6 +26,10 @@ export interface DbProduct {
   short_description: string | null
   description: string | null
   status: ProductStatus
+  source_type: ProductSourceType
+  sale_mode: ProductSaleMode
+  visibility: ProductVisibility
+  owner_id: string | null
   base_price_cents: number
   currency: string
   difficulty: string | null
@@ -39,6 +47,7 @@ export interface DbVariant {
   variant_name: string
   option_values: Record<string, unknown>
   price_cents: number
+  inventory_mode: VariantInventoryMode
   is_active: boolean
 }
 
@@ -91,6 +100,10 @@ export interface CatalogKit {
   shortDescription: string
   description: string
   status: ProductStatus
+  sourceType: ProductSourceType
+  saleMode: ProductSaleMode
+  visibility: ProductVisibility
+  ownerId: string | null
   // Pricing
   priceCents: number
   price: number // dollars, for display convenience
@@ -150,6 +163,10 @@ function kitFromRow(
     shortDescription: product.short_description ?? '',
     description: product.description ?? '',
     status: product.status,
+    sourceType: product.source_type,
+    saleMode: product.sale_mode,
+    visibility: product.visibility,
+    ownerId: product.owner_id,
     priceCents: product.base_price_cents,
     price: product.base_price_cents / 100,
     currency: product.currency,
@@ -187,6 +204,7 @@ export async function getAllKits(): Promise<CatalogKit[]> {
     .from('products')
     .select('*')
     .in('status', ['coming_soon', 'active', 'sold_out'])
+    .eq('visibility', 'public')
     .order('created_at', { ascending: true })
 
   if (prodErr || !products?.length) {
@@ -224,7 +242,7 @@ export async function getAllKits(): Promise<CatalogKit[]> {
   )
 }
 
-/** Fetch a single kit by slug. Returns null if not found or not publicly visible. */
+/** Fetch a single kit by slug. RLS decides whether private rows are visible. */
 export async function getKitBySlug(slug: string): Promise<CatalogKit | null> {
   const supabase = await createClient()
 
@@ -233,6 +251,7 @@ export async function getKitBySlug(slug: string): Promise<CatalogKit | null> {
     .select('*')
     .eq('slug', slug)
     .in('status', ['coming_soon', 'active', 'sold_out'])
+    .in('visibility', ['public', 'unlisted', 'private'])
     .single()
 
   if (prodErr || !product) {
@@ -276,6 +295,7 @@ export async function getFeaturedKits(): Promise<CatalogKit[]> {
     .from('products')
     .select('*')
     .in('status', ['coming_soon', 'active', 'sold_out'])
+    .eq('visibility', 'public')
     .eq('is_featured', true)
     .order('created_at', { ascending: true })
 
