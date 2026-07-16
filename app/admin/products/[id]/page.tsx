@@ -39,8 +39,13 @@ export default async function AdminProductDetailPage({ params }: Props) {
   if (!product) notFound()
 
   const variantIds = (variants ?? []).map((v) => v.id)
-  const [{ data: inventory }, kitItems] = await Promise.all([
+  const [{ data: inventory }, { data: materials }, kitItems] = await Promise.all([
     supabase.from('inventory').select('*').in('variant_id', variantIds),
+    supabase
+      .from('materials')
+      .select('*')
+      .order('active', { ascending: false })
+      .order('name', { ascending: true }),
     getKitItemsAdmin(id),
   ])
 
@@ -107,6 +112,7 @@ export default async function AdminProductDetailPage({ params }: Props) {
           productSlug={product.slug}
           initialItems={kitItems}
           variants={(variants ?? []) as DbVariant[]}
+          materials={materials ?? []}
         />
       </div>
     </div>

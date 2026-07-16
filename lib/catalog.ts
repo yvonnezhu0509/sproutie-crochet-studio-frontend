@@ -63,6 +63,7 @@ export interface DbKitItem {
   id: string
   product_id: string
   variant_id: string | null
+  material_id: string | null
   category: string
   item_name: string
   quantity: number
@@ -71,6 +72,8 @@ export interface DbKitItem {
   is_optional: boolean
   customer_visible: boolean
   sort_order: number
+  waste_percentage: number
+  verification_status: string
   created_at: string
   updated_at: string
 }

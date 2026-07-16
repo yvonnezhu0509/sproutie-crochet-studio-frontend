@@ -111,6 +111,60 @@ export interface KitItemPayload {
   customer_visible: boolean
   sort_order: number
   variant_id: string | null
+  material_id: string | null
+  waste_percentage: number
+  verification_status: string
+}
+
+const VERIFICATION_STATUSES = ['estimated', 'sample_tested', 'production_ready'] as const
+
+function validateKitItemPayload(payload: KitItemPayload): string | null {
+  if (!payload.category.trim()) return 'Category is required.'
+  if (!payload.item_name.trim()) return 'Item name is required.'
+  if (!payload.unit.trim()) return 'Unit is required.'
+  if (!Number.isFinite(payload.quantity) || payload.quantity <= 0) {
+    return 'Quantity must be greater than zero.'
+  }
+  if (!Number.isFinite(payload.waste_percentage) || payload.waste_percentage < 0 || payload.waste_percentage > 100) {
+    return 'Waste percentage must be between 0 and 100.'
+  }
+  if (!VERIFICATION_STATUSES.includes(payload.verification_status as typeof VERIFICATION_STATUSES[number])) {
+    return 'Verification status is invalid.'
+  }
+  return null
+}
+
+function friendlyKitItemError(message: string): string {
+  const lower = message.toLowerCase()
+  if (lower.includes('row-level security')) return 'You do not have permission to change recipes.'
+  if (lower.includes('foreign key')) return 'The selected variant or material is no longer available.'
+  if (lower.includes('violates check constraint')) return 'One or more recipe values are outside the allowed range.'
+  return 'Could not save the recipe item. Please check the fields and try again.'
+}
+
+async function validateVariantForProduct(
+  productId: string,
+  variantId: string | null,
+): Promise<string | null> {
+  if (!variantId) return null
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('product_variants')
+    .select('product_id')
+    .eq('id', variantId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[admin] validateVariantForProduct error:', error.message)
+    return 'Could not verify the selected variant. Please try again.'
+  }
+
+  if (!data || data.product_id !== productId) {
+    return 'The selected variant does not belong to this product.'
+  }
+
+  return null
 }
 
 export async function upsertKitItem(
@@ -119,11 +173,18 @@ export async function upsertKitItem(
   payload: KitItemPayload,
   existingId?: string,
 ): Promise<{ error: string | null; item: DbKitItem | null }> {
+  const validationError = validateKitItemPayload(payload)
+  if (validationError) return { error: validationError, item: null }
+
+  const variantError = await validateVariantForProduct(productId, payload.variant_id)
+  if (variantError) return { error: variantError, item: null }
+
   const supabase = await createClient()
 
   const row = {
     product_id: productId,
     variant_id: payload.variant_id || null,
+    material_id: payload.material_id || null,
     category: payload.category.trim(),
     item_name: payload.item_name.trim(),
     quantity: payload.quantity,
@@ -132,6 +193,8 @@ export async function upsertKitItem(
     is_optional: payload.is_optional,
     customer_visible: payload.customer_visible,
     sort_order: payload.sort_order,
+    waste_percentage: payload.waste_percentage,
+    verification_status: payload.verification_status,
   }
 
   let data: DbKitItem | null = null
@@ -142,6 +205,7 @@ export async function upsertKitItem(
       .from('product_kit_items')
       .update(row)
       .eq('id', existingId)
+      .eq('product_id', productId)
       .select()
       .single()
     data = result.data as DbKitItem | null
@@ -158,7 +222,7 @@ export async function upsertKitItem(
 
   if (error) {
     console.error('[admin] upsertKitItem error:', error.message)
-    return { error: error.message, item: null }
+    return { error: friendlyKitItemError(error.message), item: null }
   }
 
   revalidatePath(`/admin/products/${productId}`)
@@ -177,10 +241,11 @@ export async function deleteKitItem(
     .from('product_kit_items')
     .delete()
     .eq('id', itemId)
+    .eq('product_id', productId)
 
   if (error) {
     console.error('[admin] deleteKitItem error:', error.message)
-    return { error: error.message }
+    return { error: friendlyKitItemError(error.message) }
   }
 
   revalidatePath(`/admin/products/${productId}`)
@@ -199,14 +264,15 @@ export async function reorderKitItems(
     supabase
       .from('product_kit_items')
       .update({ sort_order })
-      .eq('id', id),
+      .eq('id', id)
+      .eq('product_id', productId),
   )
 
   const results = await Promise.all(updates)
   const firstError = results.find((r) => r.error)
   if (firstError?.error) {
     console.error('[admin] reorderKitItems error:', firstError.error.message)
-    return { error: firstError.error.message }
+    return { error: friendlyKitItemError(firstError.error.message) }
   }
 
   revalidatePath(`/admin/products/${productId}`)
