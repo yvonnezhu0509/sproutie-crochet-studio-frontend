@@ -8,8 +8,16 @@ import type {
   ProductStatus,
   ProductVisibility,
   VariantInventoryMode,
+  DbImage,
+  DbInventory,
   DbKitItem,
+  DbProduct,
+  DbVariant,
 } from '@/lib/catalog'
+import {
+  evaluateProductPublicationReadiness,
+  type PublicationStatus,
+} from '@/lib/product-publication-readiness'
 
 export interface UpdateProductPayload {
   name: string
@@ -31,6 +39,10 @@ const PRODUCT_SALE_MODES = ['stocked', 'made_to_order', 'digital'] as const
 const PRODUCT_VISIBILITIES = ['public', 'unlisted', 'private'] as const
 const VARIANT_INVENTORY_MODES = ['assembled', 'component_based', 'unlimited'] as const
 const PUBLIC_CATALOG_STATUSES: ProductStatus[] = ['coming_soon', 'active', 'sold_out']
+
+function isPublicationStatus(status: ProductStatus): status is PublicationStatus {
+  return PUBLIC_CATALOG_STATUSES.includes(status)
+}
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
@@ -254,12 +266,12 @@ export async function updateProduct(
   ] = await Promise.all([
     supabase
       .from('products')
-      .select('owner_id, slug')
+      .select('owner_id, slug, status, visibility')
       .eq('id', id)
       .single(),
     supabase
       .from('product_variants')
-      .select('inventory_mode')
+      .select('*')
       .eq('product_id', id),
   ])
 
@@ -280,6 +292,87 @@ export async function updateProduct(
   )
   if (classificationError) return { error: classificationError }
 
+  const currentStatus = existingProduct.status as ProductStatus
+  const isBecomingPublic =
+    existingProduct.visibility !== 'public' &&
+    payload.visibility === 'public'
+
+  if (isBecomingPublic && isPublicationStatus(currentStatus)) {
+    const variantRows = (variants ?? []) as DbVariant[]
+    const variantIds = variantRows.map((variant) => variant.id)
+
+    const [
+      { data: images, error: imagesError },
+      { data: kitItems, error: kitItemsError },
+    ] = await Promise.all([
+      supabase
+        .from('product_images')
+        .select('*')
+        .eq('product_id', id),
+      supabase
+        .from('product_kit_items')
+        .select('*')
+        .eq('product_id', id),
+    ])
+
+    if (imagesError || kitItemsError) {
+      if (imagesError) {
+        console.error('[admin] visibility readiness images error:', imagesError.message)
+      }
+      if (kitItemsError) {
+        console.error('[admin] visibility readiness kit items error:', kitItemsError.message)
+      }
+
+      return {
+        error: 'Could not complete the publication readiness checks. Please try again.',
+      }
+    }
+
+    let inventoryRows: DbInventory[] = []
+
+    if (variantIds.length > 0) {
+      const { data: inventory, error: inventoryError } = await supabase
+        .from('inventory')
+        .select('*')
+        .in('variant_id', variantIds)
+
+      if (inventoryError) {
+        console.error('[admin] visibility readiness inventory error:', inventoryError.message)
+        return {
+          error: 'Could not complete the publication readiness checks. Please try again.',
+        }
+      }
+
+      inventoryRows = (inventory ?? []) as DbInventory[]
+    }
+
+    const readiness = evaluateProductPublicationReadiness({
+      targetStatus: currentStatus,
+      product: {
+        name: payload.name,
+        slug: payload.slug,
+        short_description: payload.short_description,
+        description: payload.description,
+        base_price_cents: payload.base_price_cents,
+        difficulty: payload.difficulty,
+        estimated_making_time: payload.estimated_making_time,
+        sale_mode: payload.sale_mode,
+      },
+      variants: variantRows,
+      images: (images ?? []) as DbImage[],
+      inventory: inventoryRows,
+      kitItems: (kitItems ?? []) as DbKitItem[],
+    })
+
+    if (!readiness.ready) {
+      return {
+        error: `This product is not ready to become public: ${readiness.blockers
+          .map((check) => check.description)
+          .join(' ')}`,
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('products')
     .update({
@@ -287,7 +380,6 @@ export async function updateProduct(
       slug: payload.slug,
       short_description: payload.short_description,
       description: payload.description,
-      status: payload.status,
       source_type: payload.source_type,
       sale_mode: payload.sale_mode,
       visibility: payload.visibility,
@@ -319,15 +411,40 @@ export async function updateProductStatus(
 ): Promise<{ error: string | null }> {
   const supabase = await createClient()
 
-  const { data: product, error: productError } = await supabase
-    .from('products')
-    .select('source_type, visibility')
-    .eq('id', id)
-    .single()
+  const [
+    { data: product, error: productError },
+    { data: variants, error: variantsError },
+    { data: images, error: imagesError },
+    { data: kitItems, error: kitItemsError },
+  ] = await Promise.all([
+    supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('product_variants')
+      .select('*')
+      .eq('product_id', id),
+    supabase
+      .from('product_images')
+      .select('*')
+      .eq('product_id', id),
+    supabase
+      .from('product_kit_items')
+      .select('*')
+      .eq('product_id', id),
+  ])
 
   if (productError || !product) {
-    if (productError) console.error('[admin] updateProductStatus load error:', productError.message)
+    if (productError) {
+      console.error('[admin] updateProductStatus load error:', productError.message)
+    }
     return { error: 'Could not verify this product before changing status.' }
+  }
+
+  if (product.status === status) {
+    return { error: null }
   }
 
   if (
@@ -335,7 +452,65 @@ export async function updateProductStatus(
     product.visibility === 'public' &&
     PUBLIC_CATALOG_STATUSES.includes(status)
   ) {
-    return { error: 'Customer-generated products cannot appear in public listings until reviewed.' }
+    return {
+      error: 'Customer-generated products cannot appear in public listings until reviewed.',
+    }
+  }
+
+  if (isPublicationStatus(status) && product.visibility === 'public') {
+    if (variantsError || imagesError || kitItemsError) {
+      if (variantsError) {
+        console.error('[admin] readiness variants error:', variantsError.message)
+      }
+      if (imagesError) {
+        console.error('[admin] readiness images error:', imagesError.message)
+      }
+      if (kitItemsError) {
+        console.error('[admin] readiness kit items error:', kitItemsError.message)
+      }
+
+      return {
+        error: 'Could not complete the publication readiness checks. Please try again.',
+      }
+    }
+
+    const variantRows = (variants ?? []) as DbVariant[]
+    const variantIds = variantRows.map((variant) => variant.id)
+
+    let inventoryRows: DbInventory[] = []
+
+    if (variantIds.length > 0) {
+      const { data: inventory, error: inventoryError } = await supabase
+        .from('inventory')
+        .select('*')
+        .in('variant_id', variantIds)
+
+      if (inventoryError) {
+        console.error('[admin] readiness inventory error:', inventoryError.message)
+        return {
+          error: 'Could not complete the publication readiness checks. Please try again.',
+        }
+      }
+
+      inventoryRows = (inventory ?? []) as DbInventory[]
+    }
+
+    const readiness = evaluateProductPublicationReadiness({
+      targetStatus: status,
+      product: product as DbProduct,
+      variants: variantRows,
+      images: (images ?? []) as DbImage[],
+      inventory: inventoryRows,
+      kitItems: (kitItems ?? []) as DbKitItem[],
+    })
+
+    if (!readiness.ready) {
+      return {
+        error: `This product is not ready to publish: ${readiness.blockers
+          .map((check) => check.description)
+          .join(' ')}`,
+      }
+    }
   }
 
   const { error } = await supabase
