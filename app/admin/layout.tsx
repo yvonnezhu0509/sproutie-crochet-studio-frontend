@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { LayoutGrid, Package, LogOut } from 'lucide-react'
+import { History, LayoutGrid, Package, LogOut } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: {
@@ -44,6 +44,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <Package className="size-4" aria-hidden="true" />
                 Materials
+              </Link>
+              <Link
+                href="/admin/inventory-movements"
+                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <History className="size-4" aria-hidden="true" />
+                Stock Movements
               </Link>
             </nav>
           </div>
