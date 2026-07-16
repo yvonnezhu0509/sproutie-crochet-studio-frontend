@@ -60,7 +60,7 @@ export default async function OriginalsPage() {
                 <div className="relative aspect-[4/3] overflow-hidden bg-muted sm:aspect-square">
                   <Image
                     src={kit.image}
-                    alt={`${kit.name} crochet bag`}
+                    alt={kit.imageAlt}
                     fill
                     sizes="(min-width: 1024px) 320px, (min-width: 640px) 40vw, 90vw"
                     className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"

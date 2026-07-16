@@ -73,7 +73,7 @@ export default async function AdminProductsPage() {
                 {kit.image && (
                   <Image
                     src={kit.image}
-                    alt={kit.name}
+                    alt={kit.imageAlt}
                     fill
                     sizes="56px"
                     className="object-cover"
