@@ -18,6 +18,7 @@ import { ProductImagesManager } from '@/components/admin/product-images-manager'
 import { ProductVariantsManager } from '@/components/admin/product-variants-manager'
 import { KitContentsEditor } from '@/components/admin/kit-contents-editor'
 import { ProductPublicationReadiness } from '@/components/admin/product-publication-readiness'
+import { ProductLifecycleActions } from '@/components/admin/product-lifecycle-actions'
 import { evaluateProductPublicationReadiness } from '@/lib/product-publication-readiness'
 
 export const dynamic = 'force-dynamic'
@@ -158,6 +159,11 @@ export default async function AdminProductDetailPage({ params }: Props) {
           initialItems={kitItems}
           variants={(variants ?? []) as DbVariant[]}
           materials={materials ?? []}
+        />
+        <ProductLifecycleActions
+          productId={product.id}
+          productName={product.name}
+          status={product.status}
         />
       </div>
     </div>
