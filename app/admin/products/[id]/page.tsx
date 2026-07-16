@@ -3,9 +3,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import type { DbVariant, DbInventory, ProductSaleMode, ProductSourceType, ProductVisibility } from '@/lib/catalog'
+import type { DbImage, DbVariant, DbInventory, ProductSaleMode, ProductSourceType, ProductVisibility } from '@/lib/catalog'
 import { getKitItemsAdmin } from '@/lib/catalog'
 import { ProductEditForm } from '@/components/admin/product-edit-form'
+import { ProductImagesManager } from '@/components/admin/product-images-manager'
 import { ProductVariantsManager } from '@/components/admin/product-variants-manager'
 import { KitContentsEditor } from '@/components/admin/kit-contents-editor'
 
@@ -53,6 +54,7 @@ export default async function AdminProductDetailPage({ params }: Props) {
   // Build a CatalogKit shape to pass into the form
   const sortedImages = [...(images ?? [])].sort((a, b) => a.sort_order - b.sort_order)
   const gallery = sortedImages.map((img: { image_url: string }) => img.image_url)
+  const primaryImage = sortedImages[0]
   const meta = (product.metadata ?? {}) as Record<string, unknown>
   const inventoryMap: Record<string, DbInventory> = {}
   for (const row of (inventory ?? [])) {
@@ -88,8 +90,10 @@ export default async function AdminProductDetailPage({ params }: Props) {
     careInstructions: (meta.careInstructions as string[]) ?? [],
     patternFormat: (meta.patternFormat as string) ?? '',
     availability: (meta.availability as string) ?? '',
-    image: gallery[0] ?? '',
+    image: primaryImage?.image_url ?? '/placeholder.svg',
+    imageAlt: primaryImage?.alt_text?.trim() || `${product.name} product image`,
     gallery,
+    galleryImages: sortedImages as DbImage[],
     variants: (variants ?? []) as DbVariant[],
     inventory: inventoryMap,
     isFeatured: product.is_featured,
@@ -112,6 +116,11 @@ export default async function AdminProductDetailPage({ params }: Props) {
 
       <div className="mt-8 flex flex-col gap-8">
         <ProductEditForm kit={kit} />
+        <ProductImagesManager
+          productId={product.id}
+          productName={product.name}
+          images={sortedImages as DbImage[]}
+        />
         <ProductVariantsManager
           productId={product.id}
           productSlug={product.slug}

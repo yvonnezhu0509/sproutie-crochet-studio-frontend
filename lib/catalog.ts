@@ -13,6 +13,8 @@ import { createClient } from '@/lib/supabase/server'
 // Database row types (mirrors DDL exactly)
 // ---------------------------------------------------------------------------
 
+const PRODUCT_IMAGE_FALLBACK = '/placeholder.svg'
+
 export type ProductStatus = 'draft' | 'coming_soon' | 'active' | 'sold_out' | 'archived'
 export type ProductSourceType = 'sproutie_original' | 'sproutie_ai' | 'customer_ai'
 export type ProductSaleMode = 'stocked' | 'made_to_order' | 'digital'
@@ -58,6 +60,7 @@ export interface DbImage {
   image_url: string
   alt_text: string | null
   sort_order: number
+  created_at: string
 }
 
 export interface DbInventory {
@@ -126,7 +129,9 @@ export interface CatalogKit {
   availability: string
   // Images
   image: string   // primary image url
+  imageAlt: string
   gallery: string[]
+  galleryImages: DbImage[]
   // Variants
   variants: DbVariant[]
   // Inventory (keyed by variant_id)
@@ -147,8 +152,14 @@ function kitFromRow(
 ): CatalogKit {
   const meta = (product.metadata ?? {}) as Record<string, unknown>
 
-  const sortedImages = [...images].sort((a, b) => a.sort_order - b.sort_order)
+  const sortedImages = [...images].sort((a, b) =>
+    a.sort_order === b.sort_order
+      ? a.created_at.localeCompare(b.created_at)
+      : a.sort_order - b.sort_order,
+  )
   const gallery = sortedImages.map((img) => img.image_url)
+  const primaryImage = sortedImages[0]
+  const imageAlt = primaryImage?.alt_text?.trim() || `${product.name} product image`
 
   const inventoryMap: Record<string, DbInventory> = {}
   for (const row of inventoryRows) {
@@ -184,8 +195,10 @@ function kitFromRow(
     careInstructions: (meta.careInstructions as string[]) ?? [],
     patternFormat: (meta.patternFormat as string) ?? '',
     availability: (meta.availability as string) ?? '',
-    image: gallery[0] ?? '',
+    image: primaryImage?.image_url ?? PRODUCT_IMAGE_FALLBACK,
+    imageAlt,
     gallery,
+    galleryImages: sortedImages,
     variants,
     inventory: inventoryMap,
     isFeatured: product.is_featured,

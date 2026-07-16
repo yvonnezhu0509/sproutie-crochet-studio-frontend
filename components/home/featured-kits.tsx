@@ -40,7 +40,7 @@ export async function FeaturedKits() {
             <div className="relative aspect-[4/5] overflow-hidden bg-muted lg:aspect-auto lg:min-h-0 lg:flex-1">
               <Image
                 src={kits[0].image}
-                alt={`${kits[0].name} crochet bag`}
+                alt={kits[0].imageAlt}
                 fill
                 sizes="(min-width: 1024px) 54vw, 92vw"
                 className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
@@ -86,7 +86,7 @@ export async function FeaturedKits() {
               <div className="relative h-full w-[46%] shrink-0 overflow-hidden bg-muted">
                 <Image
                   src={kit.image}
-                  alt={`${kit.name} crochet bag`}
+                  alt={kit.imageAlt}
                   fill
                   sizes="(min-width: 1024px) 20vw, 45vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-[1.05]"

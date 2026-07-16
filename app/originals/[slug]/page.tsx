@@ -56,7 +56,7 @@ export default async function KitDetailPage({ params }: Props) {
           <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
             <Image
               src={kit.image}
-              alt={`${kit.name} crochet bag`}
+              alt={kit.imageAlt}
               fill
               priority
               sizes="(min-width: 1024px) 56vw, 90vw"
@@ -69,16 +69,16 @@ export default async function KitDetailPage({ params }: Props) {
           </div>
 
           {/* Thumbnail strip */}
-          {kit.gallery.length > 1 && (
+          {kit.galleryImages.length > 1 && (
             <div className="flex gap-3 overflow-x-auto pb-1">
-              {kit.gallery.map((src, i) => (
+              {kit.galleryImages.map((image, i) => (
                 <div
-                  key={i}
+                  key={image.id}
                   className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted ring-1 ring-border"
                 >
                   <Image
-                    src={src}
-                    alt={`${kit.name} view ${i + 1}`}
+                    src={image.image_url}
+                    alt={image.alt_text?.trim() || `${kit.name} view ${i + 1}`}
                     fill
                     sizes="80px"
                     className="object-cover"
