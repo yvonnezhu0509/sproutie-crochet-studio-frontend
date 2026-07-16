@@ -3,12 +3,22 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import type { DbImage, DbVariant, DbInventory, ProductSaleMode, ProductSourceType, ProductVisibility } from '@/lib/catalog'
+import type {
+  DbImage,
+  DbInventory,
+  DbProduct,
+  DbVariant,
+  ProductSaleMode,
+  ProductSourceType,
+  ProductVisibility,
+} from '@/lib/catalog'
 import { getKitItemsAdmin } from '@/lib/catalog'
 import { ProductEditForm } from '@/components/admin/product-edit-form'
 import { ProductImagesManager } from '@/components/admin/product-images-manager'
 import { ProductVariantsManager } from '@/components/admin/product-variants-manager'
 import { KitContentsEditor } from '@/components/admin/kit-contents-editor'
+import { ProductPublicationReadiness } from '@/components/admin/product-publication-readiness'
+import { evaluateProductPublicationReadiness } from '@/lib/product-publication-readiness'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,6 +109,15 @@ export default async function AdminProductDetailPage({ params }: Props) {
     isFeatured: product.is_featured,
   }
 
+  const publicationReadiness = evaluateProductPublicationReadiness({
+    targetStatus: 'active',
+    product: product as DbProduct,
+    variants: (variants ?? []) as DbVariant[],
+    images: sortedImages as DbImage[],
+    inventory: (inventory ?? []) as DbInventory[],
+    kitItems,
+  })
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 sm:px-8">
       <nav aria-label="Breadcrumb" className="mb-6">
@@ -115,6 +134,10 @@ export default async function AdminProductDetailPage({ params }: Props) {
       <p className="mt-1 font-mono text-xs text-muted-foreground">{product.id}</p>
 
       <div className="mt-8 flex flex-col gap-8">
+        <ProductPublicationReadiness
+          targetStatus="active"
+          readiness={publicationReadiness}
+        />
         <ProductEditForm kit={kit} />
         <ProductImagesManager
           productId={product.id}
