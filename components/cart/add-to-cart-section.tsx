@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { useCart } from '@/lib/cart'
 import type { CatalogKit } from '@/lib/catalog'
+import { useProductVariantSelection } from '@/components/product-variant-selection'
 
 interface Props {
   kit: CatalogKit
@@ -13,24 +14,34 @@ interface Props {
 
 export function AddToCartSection({ kit }: Props) {
   const { addItem, openDrawer } = useCart()
-  const [selectedColor, setSelectedColor] = useState<string | undefined>(undefined)
+  const activeVariants = kit.variants.filter((variant) => variant.is_active)
+  const { selectedVariantId, setSelectedVariantId } =
+    useProductVariantSelection()
   const [selectedYarn, setSelectedYarn] = useState<string>(
     kit.customizationOptions[0] ?? '',
   )
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
 
+  const selectedVariant =
+    activeVariants.find((variant) => variant.id === selectedVariantId) ?? null
+  const selectedVariantImage =
+    kit.galleryImages.find((image) => image.variant_id === selectedVariant?.id) ?? null
+  const unitPrice = selectedVariant
+    ? selectedVariant.price_cents / 100
+    : kit.price
+
   function handleAddToCart() {
     addItem({
-      productId: kit.slug,
-      variantId: selectedColor ? `${kit.slug}__${selectedColor}` : kit.slug,
+      productId: kit.id,
+      variantId: selectedVariant?.id,
+      variantName: selectedVariant?.variant_name,
       name: kit.name,
       slug: kit.slug,
-      image: kit.image,
-      color: selectedColor,
+      image: selectedVariantImage?.image_url ?? kit.image,
       yarnOption: selectedYarn || undefined,
       quantity: qty,
-      unitPrice: kit.price,
+      unitPrice,
     })
 
     setAdded(true)
@@ -40,6 +51,53 @@ export function AddToCartSection({ kit }: Props) {
 
   return (
     <div className="flex flex-col gap-5">
+      {activeVariants.length > 0 && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">Variant</legend>
+          <div className="flex flex-col gap-1.5">
+            {activeVariants.map((variant) => (
+              <label
+                key={variant.id}
+                className={cn(
+                  'flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition-colors',
+                  selectedVariantId === variant.id
+                    ? 'border-primary bg-secondary text-secondary-foreground'
+                    : 'border-border bg-background hover:bg-muted',
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="product-variant"
+                    value={variant.id}
+                    checked={selectedVariantId === variant.id}
+                    onChange={() => setSelectedVariantId(variant.id)}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors',
+                      selectedVariantId === variant.id
+                        ? 'border-primary bg-primary'
+                        : 'border-border',
+                    )}
+                  >
+                    {selectedVariantId === variant.id && (
+                      <span className="size-1.5 rounded-full bg-primary-foreground" />
+                    )}
+                  </span>
+                  {variant.variant_name}
+                </span>
+                <span className="font-medium">
+                  ${(variant.price_cents / 100).toFixed(2)}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
       {/* Yarn / customization option */}
       {kit.customizationOptions.length > 0 && (
         <fieldset className="flex flex-col gap-2">

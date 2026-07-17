@@ -130,6 +130,7 @@ export function CartDrawer() {
 
                     {/* Variant pills */}
                     <div className="flex flex-wrap gap-1">
+                      {item.variantName && <VariantPill label={item.variantName} />}
                       {item.color && <VariantPill label={item.color} />}
                       {item.size && <VariantPill label={item.size} />}
                       {item.yarnOption && <VariantPill label={item.yarnOption} />}

@@ -24,6 +24,7 @@ export interface CartItem {
   /** Future: ID of an AI-generated design */
   designId?: string
   variantId?: string
+  variantName?: string
   name: string
   slug: string
   image: string
