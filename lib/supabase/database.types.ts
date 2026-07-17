@@ -14,6 +14,91 @@ export type Database = {
   }
   public: {
     Tables: {
+      cart_items: {
+        Row: {
+          cart_id: string
+          configuration: Json
+          created_at: string
+          id: string
+          line_key: string
+          product_id: string
+          quantity: number
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          cart_id: string
+          configuration?: Json
+          created_at?: string
+          id?: string
+          line_key: string
+          product_id: string
+          quantity?: number
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          cart_id?: string
+          configuration?: Json
+          created_at?: string
+          id?: string
+          line_key?: string
+          product_id?: string
+          quantity?: number
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carts: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           low_stock_threshold: number
@@ -580,10 +665,10 @@ export type Database = {
         Args: {
           p_material_id: string
           p_movement_type: string
+          p_note?: string
           p_quantity_delta: number
-          p_reference_type?: string | null
-          p_reference_id?: string | null
-          p_note?: string | null
+          p_reference_id?: string
+          p_reference_type?: string
         }
         Returns: {
           movement_id: string
@@ -592,12 +677,12 @@ export type Database = {
       }
       record_variant_inventory_movement: {
         Args: {
-          p_variant_id: string
           p_movement_type: string
+          p_note?: string
           p_quantity_delta: number
-          p_reference_type?: string | null
-          p_reference_id?: string | null
-          p_note?: string | null
+          p_reference_id?: string
+          p_reference_type?: string
+          p_variant_id: string
         }
         Returns: {
           movement_id: string
