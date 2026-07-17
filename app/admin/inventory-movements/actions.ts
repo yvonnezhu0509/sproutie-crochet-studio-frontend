@@ -31,9 +31,9 @@ type MovementResult = {
   newQuantity: number | null
 }
 
-function normalizeOptionalText(value: string): string | null {
+function normalizeOptionalText(value: string): string | undefined {
   const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
+  return trimmed.length > 0 ? trimmed : undefined
 }
 
 function validatePayload(payload: InventoryMovementPayload): string | null {
