@@ -247,6 +247,54 @@ export async function updateProductImageAltText(
   return { error: null }
 }
 
+export async function updateProductImageVariant(
+  productId: string,
+  imageId: string,
+  variantId: string | null,
+): Promise<ProductImageResult> {
+  const supabase = await createClient()
+  const { product, error: productError } = await loadProduct(supabase, productId)
+  if (productError || !product) return { error: productError ?? 'Product was not found.' }
+
+  if (variantId) {
+    const { data: variant, error: variantError } = await supabase
+      .from('product_variants')
+      .select('id')
+      .eq('id', variantId)
+      .eq('product_id', productId)
+      .maybeSingle()
+
+    if (variantError) {
+      console.error('[admin] validate product image variant error:', variantError.message)
+      return { error: 'Could not verify the selected variant. Please try again.' }
+    }
+
+    if (!variant) {
+      return { error: 'The selected variant does not belong to this product.' }
+    }
+  }
+
+  const { data: image, error } = await supabase
+    .from('product_images')
+    .update({ variant_id: variantId })
+    .eq('id', imageId)
+    .eq('product_id', productId)
+    .select('id')
+    .maybeSingle()
+
+  if (error) {
+    console.error('[admin] update product image variant error:', error.message)
+    return { error: friendlyImageError(error.message) }
+  }
+
+  if (!image) {
+    return { error: 'The selected image does not belong to this product.' }
+  }
+
+  revalidateProductImagePaths(product)
+  return { error: null }
+}
+
 export async function setPrimaryProductImage(
   productId: string,
   imageId: string,

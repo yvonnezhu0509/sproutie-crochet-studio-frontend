@@ -6,12 +6,13 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { ArrowDown, ArrowUp, ImageIcon, Save, Star, Trash2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
-import type { DbImage } from '@/lib/catalog'
+import type { DbImage, DbVariant } from '@/lib/catalog'
 import {
   deleteProductImage,
   moveProductImage,
   setPrimaryProductImage,
   updateProductImageAltText,
+  updateProductImageVariant,
   uploadProductImages,
 } from '@/app/admin/products/image-actions'
 
@@ -19,13 +20,14 @@ interface Props {
   productId: string
   productName: string
   images: DbImage[]
+  variants: DbVariant[]
 }
 
 function fallbackAlt(productName: string): string {
   return `${productName} product image`
 }
 
-export function ProductImagesManager({ productId, productName, images }: Props) {
+export function ProductImagesManager({ productId, productName, images, variants }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isPending, startTransition] = useTransition()
@@ -85,6 +87,18 @@ export function ProductImagesManager({ productId, productName, images }: Props) 
       if (result.error) setError(result.error)
       else {
         setSuccess('Alt text saved.')
+        router.refresh()
+      }
+    })
+  }
+
+  function handleVariantChange(imageId: string, variantId: string | null) {
+    clearMessages()
+    startTransition(async () => {
+      const result = await updateProductImageVariant(productId, imageId, variantId)
+      if (result.error) setError(result.error)
+      else {
+        setSuccess('Image variant association updated.')
         router.refresh()
       }
     })
@@ -259,6 +273,28 @@ export function ProductImagesManager({ productId, productName, images }: Props) 
                       </button>
                     </div>
                   </div>
+
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs text-muted-foreground">Associated variant</span>
+                    <select
+                      value={image.variant_id ?? ''}
+                      onChange={(event) =>
+                        handleVariantChange(image.id, event.target.value || null)
+                      }
+                      disabled={isPending}
+                      className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none ring-ring/50 focus:ring-2"
+                    >
+                      <option value="">General product image</option>
+                      {variants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {variant.variant_name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-muted-foreground">
+                      General images are not limited to one specific variant.
+                    </span>
+                  </label>
 
                   <label className="flex flex-col gap-1.5">
                     <span className="text-xs text-muted-foreground">Alt text</span>
