@@ -145,6 +145,7 @@ export default async function AdminProductDetailPage({ params }: Props) {
           productId={product.id}
           productName={product.name}
           images={sortedImages as DbImage[]}
+          variants={(variants ?? []) as DbVariant[]}
         />
         <ProductVariantsManager
           key={JSON.stringify([variants ?? [], inventoryMap])}
