@@ -689,6 +689,7 @@ export type Database = {
           new_quantity: number
         }[]
       }
+      replace_active_cart_items: { Args: { p_items: Json }; Returns: string }
     }
     Enums: {
       product_status:
