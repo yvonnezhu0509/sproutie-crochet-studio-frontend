@@ -174,14 +174,6 @@ export function SiteHeader() {
                       >
                         Admin
                       </Link>
-                      <Link
-                        href="/admin/products"
-                        role="menuitem"
-                        onClick={() => setMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted cursor-pointer"
-                      >
-                        Manage Products
-                      </Link>
                     </>
                   )}
                   <div className="my-1 h-px bg-border" />
