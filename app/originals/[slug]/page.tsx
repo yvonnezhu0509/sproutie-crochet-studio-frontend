@@ -1,23 +1,18 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Check, Clock, Layers, Package } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { getKitBySlug, getKitItems } from '@/lib/catalog'
 import { AddToCartSection } from '@/components/cart/add-to-cart-section'
 import { KitContentsSummary } from '@/components/kit-contents-summary'
+import { ProductImageGallery } from '@/components/product-image-gallery'
+import { ProductVariantSelectionProvider } from '@/components/product-variant-selection'
+import { ProductVariantPrice } from '@/components/product-variant-price'
 
 export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ slug: string }>
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  coming_soon: 'Waitlist',
-  active: 'Early Access',
-  sold_out: 'Sold Out',
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -35,6 +30,8 @@ export default async function KitDetailPage({ params }: Props) {
   const kit = await getKitBySlug(slug)
   if (!kit) notFound()
   const kitItems = await getKitItems(kit.id)
+  const defaultVariantId =
+    kit.variants.find((variant) => variant.is_active)?.id ?? ''
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10 sm:px-8 lg:px-12 lg:py-16">
@@ -50,44 +47,10 @@ export default async function KitDetailPage({ params }: Props) {
       </nav>
 
       {/* Main grid */}
-      <div className="grid gap-10 lg:grid-cols-[1fr_420px] lg:gap-16">
-        {/* Left — image gallery */}
-        <div className="flex flex-col gap-4">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
-            <Image
-              src={kit.image}
-              alt={kit.imageAlt}
-              fill
-              priority
-              sizes="(min-width: 1024px) 56vw, 90vw"
-              className="object-cover"
-            />
-            <div className="absolute left-4 top-4 flex gap-2">
-              <Badge variant="secondary">{STATUS_LABEL[kit.status] ?? kit.status}</Badge>
-              <Badge variant="outline">{kit.difficulty}</Badge>
-            </div>
-          </div>
-
-          {/* Thumbnail strip */}
-          {kit.galleryImages.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {kit.galleryImages.map((image, i) => (
-                <div
-                  key={image.id}
-                  className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted ring-1 ring-border"
-                >
-                  <Image
-                    src={image.image_url}
-                    alt={image.alt_text?.trim() || `${kit.name} view ${i + 1}`}
-                    fill
-                    sizes="80px"
-                    className="object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      <ProductVariantSelectionProvider defaultVariantId={defaultVariantId}>
+        <div className="grid gap-10 lg:grid-cols-[1fr_420px] lg:gap-16">
+          {/* Left — image gallery */}
+          <ProductImageGallery kit={kit} />
 
         {/* Right — product info + add to cart */}
         <div className="flex flex-col gap-6">
@@ -97,7 +60,7 @@ export default async function KitDetailPage({ params }: Props) {
               {kit.name}
             </h1>
             <p className="mt-1 font-heading text-lg text-muted-foreground">{kit.tagline}</p>
-            <p className="mt-4 font-heading text-3xl font-semibold">${kit.price.toFixed(0)}</p>
+            <ProductVariantPrice kit={kit} />
           </div>
 
           {/* Quick stats */}
@@ -178,6 +141,7 @@ export default async function KitDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+      </ProductVariantSelectionProvider>
 
       {/* Story section */}
       {kit.description && (
