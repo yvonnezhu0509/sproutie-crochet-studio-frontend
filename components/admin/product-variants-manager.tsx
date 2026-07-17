@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Plus, Save, X } from 'lucide-react'
+import { Check, Plus, Save, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import {
   createProductVariant,
+  deleteProductVariant,
   updateProductVariant,
   type ProductVariantPayload,
 } from '@/app/admin/products/actions'
@@ -172,10 +173,6 @@ export function ProductVariantsManager({
     Object.fromEntries(variants.map((variant) => [variant.id, formFromVariant(variant, inventory[variant.id])])),
   )
 
-  useEffect(() => {
-    setForms(Object.fromEntries(variants.map((variant) => [variant.id, formFromVariant(variant, inventory[variant.id])])))
-  }, [inventory, variants])
-
   function updateCreateForm(patch: Partial<VariantFormState>) {
     setCreateForm((current) => ({ ...current, ...patch }))
   }
@@ -291,6 +288,30 @@ export function ProductVariantsManager({
       }
       setSavedVariantId(variant.id)
       setTimeout(() => setSavedVariantId(null), 2500)
+      router.refresh()
+    })
+  }
+
+  function handleDelete(variant: DbVariant) {
+    if (variant.is_active) {
+      setError('Deactivate this variant before permanently deleting it.')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Permanently delete "${variant.variant_name}"? This cannot be undone.`,
+    )
+    if (!confirmed) return
+
+    setError(null)
+    startTransition(async () => {
+      const result = await deleteProductVariant(productId, productSlug, variant.id)
+      if (result.error) {
+        setError(result.error)
+        router.refresh()
+        return
+      }
+
       router.refresh()
     })
   }
@@ -523,15 +544,27 @@ export function ProductVariantsManager({
                 <div className="mt-4 space-y-4">
                   {renderFormFields(form, (patch) => updateVariantForm(variant.id, patch))}
                   {renderOptionEditor(form, 'variant', variant.id)}
-                  <button
-                    type="button"
-                    onClick={() => handleSave(variant)}
-                    disabled={isPending}
-                    className={cn(buttonVariants({ variant: 'outline' }), 'h-10 text-sm')}
-                  >
-                    <Save className="mr-1.5 size-4" />
-                    Save variant
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSave(variant)}
+                      disabled={isPending}
+                      className={cn(buttonVariants({ variant: 'outline' }), 'h-10 text-sm')}
+                    >
+                      <Save className="mr-1.5 size-4" />
+                      Save variant
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(variant)}
+                      disabled={isPending || variant.is_active}
+                      title={variant.is_active ? 'Deactivate this variant before deleting it.' : undefined}
+                      className={cn(buttonVariants({ variant: 'destructive' }), 'h-10 text-sm')}
+                    >
+                      <Trash2 className="mr-1.5 size-4" />
+                      Delete variant
+                    </button>
+                  </div>
                 </div>
               </article>
             )

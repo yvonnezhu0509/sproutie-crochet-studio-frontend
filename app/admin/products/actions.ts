@@ -891,6 +891,67 @@ export async function updateProductVariant(
   return { error: null }
 }
 
+export async function deleteProductVariant(
+  productId: string,
+  productSlug: string,
+  variantId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient()
+
+  const { data: variant, error: variantError } = await supabase
+    .from('product_variants')
+    .select('id, is_active')
+    .eq('id', variantId)
+    .eq('product_id', productId)
+    .maybeSingle()
+
+  if (variantError || !variant) {
+    if (variantError) {
+      console.error('[admin] deleteProductVariant load error:', variantError.message)
+    }
+    return { error: 'The selected variant does not belong to this product.' }
+  }
+
+  if (variant.is_active) {
+    return { error: 'Deactivate this variant before permanently deleting it.' }
+  }
+
+  const { data: movement, error: movementError } = await supabase
+    .from('inventory_movements')
+    .select('id')
+    .eq('variant_id', variantId)
+    .limit(1)
+    .maybeSingle()
+
+  if (movementError) {
+    console.error('[admin] deleteProductVariant movement check error:', movementError.message)
+    return { error: 'Could not verify this variant’s inventory history.' }
+  }
+
+  if (movement) {
+    return {
+      error: 'This variant has inventory movement history and cannot be permanently deleted.',
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('product_variants')
+    .delete()
+    .eq('id', variantId)
+    .eq('product_id', productId)
+
+  if (deleteError) {
+    console.error('[admin] deleteProductVariant delete error:', deleteError.message)
+    return { error: friendlyVariantError(deleteError.message) }
+  }
+
+  revalidatePath('/admin/products')
+  revalidatePath(`/admin/products/${productId}`)
+  revalidatePath(`/originals/${productSlug}`)
+  revalidatePath('/')
+  return { error: null }
+}
+
 export async function updateInventory(
   variantId: string,
   quantityOnHand: number,
